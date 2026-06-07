@@ -1,0 +1,15 @@
+[Unit]
+Description=HamAlert DX Receiver
+After=network.target
+
+[Service]
+Type=simple
+User=lek
+WorkingDirectory=/home/lek/hamalert-receiver
+Environment=PORT=8181
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HamAlert DX Receiver</title>
+<!-- Leaflet.js CSS – öppen kartklient som vi använder för världskartan -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ── Reset & base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── CSS-variabler ────────────────────────────────────────
+   Bandfarger definieras här en gång och återanvänds i JS (BAND_COLOR)
+   och i CSS (.pill-*). Samma färger i ljust och mörkt tema.
+   UI-färger (bg, text, accent) byts vid tema-toggle via html.dark-klassen.
+   ─────────────────────────────────────────────────────── */
+:root {
+  --font-ui:   'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-call: 'Courier New', 'Consolas', monospace;
+
+  /* Bandfarger (samma i båda teman) */
+  --c-160: #cc2200;
+  --c-80:  #ff4500;
+  --c-60:  #996633;
+  --c-40:  #ffa500;
+  --c-30:  #ccaa00;
+  --c-20:  #009933;
+  --c-17:  #009999;
+  --c-15:  #3355cc;
+  --c-12:  #7700bb;
+  --c-10:  #cc0077;
+  --c-6:   #333333;
+  --c-2:   #666666;
+  --c-70:  #888888;
+}
+
+/* ── Ljust tema (standard) ────────────────────────────── */
+:root {
+  --bg:       #f4f4f4;
+  --bg2:      #ffffff;
+  --bg3:      #e8e8e8;
+  --border:   #d0d0d0;
+  --text:     #1a1a1a;
+  --text-dim: #777;
+  --accent:   #0077cc;
+  --row-flash-from: #d4edda;
+}
+
+/* ── Mörkt tema – aktiveras via html.dark ─────────────── */
+html.dark {
+  --bg:       #0e0e0e;
+  --bg2:      #161616;
+  --bg3:      #1e1e1e;
+  --border:   #2a2a2a;
+  --text:     #d8d8d8;
+  --text-dim: #666;
+  --accent:   #00aaff;
+  --row-flash-from: #1a3a1a;
+}
+
+html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* ── Huvudlayout ──────────────────────────────────────── */
+/* Hela appen är en flex-kolumn som fyller skärmen (100vh) */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Header ───────────────────────────────────────────── */
+#header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 14px;
+  height: 48px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; /* header ska aldrig krypa ihop */
+}
+
+#logo { font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: .03em; white-space: nowrap; }
+#logo span { color: var(--text-dim); font-weight: 400; }
+
+.hdr-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+
+#setup-form { display: flex; gap: 6px; align-items: center; }
+#setup-form label { color: var(--text-dim); font-size: 11px; }
+#inp-call, #inp-loc {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 4px 8px; font-family: var(--font-call);
+  font-size: 13px; width: 90px; outline: none;
+}
+#inp-call:focus, #inp-loc:focus { border-color: var(--accent); }
+#btn-save {
+  background: var(--accent); border: none; border-radius: 4px;
+  color: #fff; padding: 4px 10px; cursor: pointer; font-size: 12px; font-weight: 600;
+}
+#btn-save:hover { opacity: .85; }
+
+#hdr-right { display: flex; gap: 14px; align-items: center; margin-left: auto; }
+
+/* Statusprick – grön pulsering vid ansluten, röd vid fel */
+#status-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+#status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
+#status-dot.ok { background: #00cc44; box-shadow: 0 0 6px #00cc44; animation: pulse 2s ease infinite; }
+#status-dot.err { background: #ff4444; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+#spots-count { color: var(--text-dim); font-size: 12px; }
+#utc-clock { font-family: var(--font-call); font-size: 13px; color: var(--accent); }
+
+#btn-audio, #btn-theme {
+  background: none; border: 1px solid var(--text-dim); border-radius: 4px;
+  color: var(--text-dim); padding: 3px 8px; cursor: pointer; font-size: 11px;
+}
+#btn-audio:hover, #btn-theme:hover { border-color: var(--text); color: var(--text); }
+#btn-audio.on { color: #cc8800; border-color: #cc8800; }
+
+/* ── Filterrad ────────────────────────────────────────── */
+#filters {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#filters label { color: var(--text-dim); font-size: 11px; margin-right: 2px; }
+
+/* Bandpiller – tonad (opacity .45) = inaktiv, full opacity = aktiv */
+.band-pill {
+  padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  border: 1px solid transparent; cursor: pointer; opacity: .45; transition: opacity .15s;
+}
+.band-pill.active { opacity: 1; border-color: rgba(255,255,255,.25); }
+
+/* Varje band-klass sätter bakgrundsfärg från CSS-variabeln.
+   Ljusa band (40m, 30m) använder svart text för kontrast. */
+.pill-160 { color:#fff; background: var(--c-160); }
+.pill-80  { color:#fff; background: var(--c-80);  }
+.pill-60  { color:#fff; background: var(--c-60);  }
+.pill-40  { color:#000; background: var(--c-40);  }
+.pill-30  { color:#000; background: var(--c-30);  }
+.pill-20  { color:#fff; background: var(--c-20);  }
+.pill-17  { color:#fff; background: var(--c-17);  }
+.pill-15  { color:#fff; background: var(--c-15);  }
+.pill-12  { color:#fff; background: var(--c-12);  }
+.pill-10  { color:#fff; background: var(--c-10);  }
+.pill-6   { color:#fff; background: var(--c-6);   }
+.pill-2   { color:#fff; background: var(--c-2);   }
+
+.filter-sel {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 3px 8px; font-size: 12px; outline: none; cursor: pointer;
+}
+
+#filter-sep { width: 1px; height: 18px; background: var(--border); }
+
+/* ── Huvudyta (karta + tabell sida vid sida) ──────────── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Karta ────────────────────────────────────────────── */
+/* Bredd styrs av JS (initialt 55%, dragbar 20–80%) */
+#map-wrap { width: 55%; flex-shrink: 0; position: relative; min-width: 20%; max-width: 80%; }
+#map { width: 100%; height: 100%; }
+
+/* ── Draghandtag (karta/tabell-splitter) ──────────────── */
+#resize-handle {
+  width: 6px; flex-shrink: 0; cursor: col-resize;
+  background: var(--border); transition: background .15s;
+  position: relative; z-index: 10;
+}
+#resize-handle:hover, #resize-handle.dragging { background: var(--accent); }
+
+/* ── Tabellpanel ──────────────────────────────────────── */
+#table-wrap { flex: 1; display: flex; flex-direction: column; border-left: 1px solid var(--border); overflow: hidden; }
+
+#spot-table-scroll { overflow-y: auto; flex: 1; }
+#spot-table-scroll::-webkit-scrollbar { width: 6px; }
+#spot-table-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+/* table-layout: fixed krävs för att JS-kontrollerade kolumnbredder ska fungera.
+   Med auto-layout väljer webbläsaren bredd baserat på innehåll, vilket ignorerar
+   th.style.width. Med fixed respekteras th-bredden. */
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 5px 8px; text-align: left; font-size: 10px;
+  font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap; overflow: hidden; position: sticky;
+  user-select: none; /* förhindra textmarkering vid kolumnresize-drag */
+}
+
+/* Resize-handtag per kolumn – absolut positionerat längst till höger i th */
+.col-resize {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 5px;
+  cursor: col-resize; z-index: 1;
+  border-right: 2px solid transparent; transition: border-color .15s;
+}
+.col-resize:hover, .col-resize.dragging { border-right-color: var(--accent); }
+
+/* Tabellrader: vänster kantlinje sätts till bandfärg via JS inline-style */
+tbody tr {
+  border-left: 3px solid transparent;
+  cursor: pointer; transition: background .1s;
+}
+tbody tr:hover { background: var(--bg3); }
+tbody tr.selected { background: rgba(0, 170, 255, .1); border-left-color: var(--accent) !important; }
+
+/* Ny spot: grön/mörkgrön flash-animation som tonar bort */
+tbody tr.new-spot { animation: rowFlash .8s ease forwards; }
+@keyframes rowFlash { from{background:var(--row-flash-from)} to{background:transparent} }
+
+/* max-width: 0 + overflow:hidden + text-overflow:ellipsis ger bra klippning
+   i fixed-layout-tabellen utan att bredden påverkas av innehållet */
+tbody td {
+  padding: 4px 8px; border-bottom: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 0;
+}
+
+.td-time   { color: var(--text-dim); font-size: 11px; }
+.td-call   { font-family: var(--font-call); font-weight: 700; font-size: 13px; }
+.td-freq   { font-family: var(--font-call); font-size: 12px; text-align: right; }
+.td-band   { font-size: 11px; font-weight: 700; text-align: center; }
+.td-mode   { font-size: 11px; color: var(--text-dim); }
+.td-spotter{ font-family: var(--font-call); font-size: 11px; color: var(--text-dim); }
+.td-entity { font-size: 11px; }
+.td-comment{ font-size: 11px; color: var(--text-dim); }
+.td-qrz   { width: 36px; text-align: center; }
+.td-qrz a {
+  font-size: 10px; font-weight: 700; padding: 1px 4px;
+  border: 1px solid var(--border); border-radius: 3px;
+  color: var(--accent); text-decoration: none; white-space: nowrap;
+}
+.td-qrz a:hover { background: var(--accent); color: #fff; }
+
+/* ── Detaljrad (längst ner) ───────────────────────────── */
+#detail {
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 6px 14px;
+  min-height: 36px;
+  display: flex; align-items: center; gap: 16px;
+  flex-shrink: 0; flex-wrap: wrap;
+  font-size: 12px;
+}
+#detail .d-call { font-family: var(--font-call); font-size: 15px; font-weight: 700; color: var(--accent); }
+#detail .d-label { color: var(--text-dim); font-size: 10px; display: block; }
+#detail .d-val { color: var(--text); }
+#detail .d-group { display: flex; flex-direction: column; }
+#detail-empty { color: var(--text-dim); font-size: 12px; }
+
+/* ── Setup-overlay (visas vid första besöket) ─────────── */
+#setup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.8);
+  display: flex; align-items: center; justify-content: center; z-index: 9000;
+}
+#setup-box {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 32px 36px; max-width: 360px; width: 90%;
+}
+#setup-box h2 { color: var(--accent); margin-bottom: 6px; font-size: 17px; }
+#setup-box p  { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; line-height: 1.5; }
+.setup-field  { margin-bottom: 14px; }
+.setup-field label { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+.setup-field input {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 8px 10px;
+  font-family: var(--font-call); font-size: 14px; outline: none;
+}
+.setup-field input:focus { border-color: var(--accent); }
+#btn-setup-save {
+  width: 100%; background: var(--accent); border: none; border-radius: 6px;
+  color: #fff; padding: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+#btn-setup-save:hover { opacity: .85; }
+
+/* ── Responsiv / mobil ────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Header: kompaktare, två rader */
+  #header {
+    flex-wrap: wrap; height: auto; padding: 8px 10px; gap: 8px;
+  }
+  #logo { font-size: 13px; }
+  #setup-form { order: 3; width: 100%; }
+  #inp-call, #inp-loc { width: 80px; }
+  #hdr-right { margin-left: 0; gap: 10px; }
+  #utc-clock { font-size: 12px; }
+
+  /* Filter: horisontell scroll istf radbrytning */
+  #filters {
+    flex-wrap: nowrap; overflow-x: auto; padding: 5px 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #filters::-webkit-scrollbar { display: none; }
+
+  /* Mobilvy: karta ovanpå, tabell under */
+  #main { flex-direction: column; }
+  #map-wrap { width: 100%; height: 40vh; flex-shrink: 0; }
+  #table-wrap { border-left: none; border-top: 1px solid var(--border); }
+
+  /* Göm Spotter-kolumnen på smala skärmar */
+  .td-spotter, thead th:nth-child(6),
+  tbody td:nth-child(6) { display: none; }
+
+  #detail { padding: 5px 10px; gap: 10px; font-size: 11px; }
+  #detail .d-call { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+  /* Mycket liten skärm: göm även Entity och Comment */
+  .td-entity, thead th:nth-child(7),
+  tbody td:nth-child(7) { display: none; }
+
+  .td-comment, thead th:nth-child(8),
+  tbody td:nth-child(8) { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header: logga, callsign/locator-inmatning, status, klocka, knappar -->
+  <div id="header">
+    <div id="logo">⚡ HamAlert <span>DX Receiver</span></div>
+    <div class="hdr-sep"></div>
+    <div id="setup-form">
+      <label>Call</label>
+      <input id="inp-call" type="text" placeholder="SM5ABC" maxlength="12" autocomplete="off">
+      <label>Locator</label>
+      <input id="inp-loc"  type="text" placeholder="JO89WI" maxlength="8"  autocomplete="off">
+      <button id="btn-save">Save</button>
+    </div>
+    <div id="hdr-right">
+      <div id="status-wrap">
+        <div id="status-dot"></div>
+        <span id="status-text">Connecting…</span>
+      </div>
+      <div id="spots-count">0 spots today</div>
+      <div id="utc-clock">--:--:-- UTC</div>
+      <button id="btn-theme" title="Toggle dark/light mode">🌙 Dark</button>
+      <button id="btn-audio" title="Toggle audio alerts">🔇 Audio</button>
+    </div>
+  </div>
+
+  <!-- Filterrad: bandpiller + dropdowns för mode, kontinent, källa, ålder -->
+  <div id="filters">
+    <label>Band:</label>
+    <span class="band-pill pill-160 active" data-band="160m">160m</span>
+    <span class="band-pill pill-80  active" data-band="80m" >80m</span>
+    <span class="band-pill pill-60  active" data-band="60m" >60m</span>
+    <span class="band-pill pill-40  active" data-band="40m" >40m</span>
+    <span class="band-pill pill-30  active" data-band="30m" >30m</span>
+    <span class="band-pill pill-20  active" data-band="20m" >20m</span>
+    <span class="band-pill pill-17  active" data-band="17m" >17m</span>
+    <span class="band-pill pill-15  active" data-band="15m" >15m</span>
+    <span class="band-pill pill-12  active" data-band="12m" >12m</span>
+    <span class="band-pill pill-10  active" data-band="10m" >10m</span>
+    <span class="band-pill pill-6   active" data-band="6m"  >6m</span>
+    <span class="band-pill pill-2   active" data-band="2m"  >2m</span>
+    <div id="filter-sep"></div>
+    <label>Mode:</label>
+    <select id="filter-mode" class="filter-sel">
+      <option value="">All</option>
+      <option value="CW">CW</option>
+      <option value="SSB">SSB</option>
+      <option value="FT8">FT8</option>
+      <option value="FT4">FT4</option>
+      <option value="RTTY">RTTY</option>
+      <option value="JT">JT</option>
+      <option value="PSK">PSK</option>
+    </select>
+    <label>Cont:</label>
+    <select id="filter-cont" class="filter-sel">
+      <option value="">All</option>
+      <option value="EU">EU</option>
+      <option value="NA">NA</option>
+      <option value="SA">SA</option>
+      <option value="AF">AF</option>
+      <option value="AS">AS</option>
+      <option value="OC">OC</option>
+    </select>
+    <label>Source:</label>
+    <select id="filter-src" class="filter-sel">
+      <option value="">All</option>
+      <option value="cluster">Cluster</option>
+      <option value="rbn">RBN</option>
+      <option value="sotawatch">SOTA</option>
+      <option value="pota">POTA</option>
+      <option value="pskreporter">PSK Reporter</option>
+      <option value="wwff">WWFF</option>
+    </select>
+    <div id="filter-sep"></div>
+    <label>Age:</label>
+    <select id="filter-age" class="filter-sel">
+      <option value="0">All time</option>
+      <option value="5">5 Minutes</option>
+      <option value="15">15 Minutes</option>
+      <option value="30" selected>30 Minutes</option>
+      <option value="60">1 Hour</option>
+    </select>
+    <div id="filter-sep"></div>
+    <!-- Återställer alla kolumnbredder till standardvärden -->
+    <button id="btn-reset-cols" class="filter-sel" style="cursor:pointer" title="Reset column widths to default">⟺ Cols</button>
+  </div>
+
+  <!-- Huvudyta: karta (vänster) + draghandtag + tabell (höger) -->
+  <div id="main">
+    <div id="map-wrap">
+      <div id="map"></div>
+    </div>
+    <div id="resize-handle" title="Drag to resize"></div>
+    <div id="table-wrap">
+      <div id="spot-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="td-time"  >UTC</th>
+              <th class="td-qrz"  ></th>
+              <th class="td-call"  >Callsign</th>
+              <th class="td-freq"  >Freq</th>
+              <th class="td-band"  >Band</th>
+              <th class="td-mode"  >Mode</th>
+              <th class="td-spotter">Spotter</th>
+              <th class="td-entity">Entity</th>
+              <th class="td-comment">Comment</th>
+            </tr>
+          </thead>
+          <tbody id="spot-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detaljrad: visas längst ner när en spot klickas -->
+  <div id="detail">
+    <span id="detail-empty">Click a spot to see details</span>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Setup-overlay: visas vid första besöket (ingen callsign/locator i localStorage) -->
+<div id="setup-overlay" style="display:none">
+  <div id="setup-box">
+    <h2>Welcome to HamAlert Receiver</h2>
+    <p>Enter your callsign and Maidenhead locator to position your station on the map and calculate bearing/distance to DX stations.</p>
+    <div class="setup-field">
+      <label>Your Callsign</label>
+      <input id="setup-call" type="text" placeholder="SM5ABC" maxlength="12" autocomplete="off">
+    </div>
+    <div class="setup-field">
+      <label>Your Locator (4 or 6 chars)</label>
+      <input id="setup-loc" type="text" placeholder="JO89WI" maxlength="8" autocomplete="off">
+    </div>
+    <!-- Defaultknapp: fyller i 8S0HRA / JO99BH för testning/demo -->
+    <button id="btn-default" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:8px;font-size:12px;cursor:pointer;margin-bottom:8px;">
+      Use default: 8S0HRA / JO99BH
+    </button>
+    <button id="btn-setup-save">Get Started</button>
+  </div>
+</div>
+
+<!-- Leaflet.js – öppen kartklient för Leaflet-kartan -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════
+//  DXCC-lookup: DXCC-entitetsnamn → ungefärlig [lat, lon]
+//
+//  HamAlert skickar "entity" (t.ex. "Sweden", "Japan").
+//  Vi slår upp koordinaterna i denna tabell för att placera
+//  en markör på kartan. ~100 vanliga entiteter täcks.
+//  Saknas entiteten används kontinentens centrum som fallback.
+// ══════════════════════════════════════════════════════════
+const DXCC = {
+  // Europa
+  'England':           [52.5,  -1.5], 'Scotland':         [56.5,  -4.0],
+  'Wales':             [52.3,  -3.7], 'Northern Ireland':  [54.7,  -6.7],
+  'Ireland':           [53.3,  -8.0], 'France':            [46.8,   2.4],
+  'Germany':           [51.2,  10.5], 'Spain':             [40.4,  -3.7],
+  'Italy':             [42.8,  12.5], 'Netherlands':       [52.4,   5.3],
+  'Belgium':           [50.5,   4.5], 'Switzerland':       [47.0,   8.0],
+  'Austria':           [47.5,  13.3], 'Sweden':            [62.0,  15.0],
+  'Norway':            [64.0,  13.0], 'Finland':           [64.0,  26.0],
+  'Denmark':           [56.0,  10.0], 'Poland':            [52.0,  20.0],
+  'Czech Republic':    [49.8,  15.5], 'Slovakia':          [48.7,  19.7],
+  'Hungary':           [47.2,  19.0], 'Romania':           [45.9,  24.9],
+  'Bulgaria':          [42.7,  25.5], 'Greece':            [39.1,  21.9],
+  'Serbia':            [44.0,  21.0], 'Croatia':           [45.1,  15.2],
+  'Slovenia':          [46.1,  14.6], 'Portugal':          [39.4,  -8.2],
+  'Ukraine':           [49.0,  32.0], 'European Russia':   [58.0,  40.0],
+  'Russia':            [61.0,  60.0], 'Belarus':           [53.5,  28.0],
+  'Lithuania':         [55.9,  23.9], 'Latvia':            [56.9,  24.6],
+  'Estonia':           [58.6,  25.0], 'Iceland':           [65.0, -18.0],
+  'Greenland':         [72.0, -40.0], 'Faroe Is.':         [62.0,  -7.0],
+  'Canary Is.':        [28.3, -15.5], 'Azores':            [38.0, -27.2],
+  'Madeira Is.':       [32.6, -16.9], 'Gibraltar':         [36.1,  -5.4],
+  'Malta':             [35.9,  14.4], 'Cyprus':            [35.1,  33.4],
+  'Turkey':            [39.0,  35.0], 'European Turkey':   [41.0,  28.9],
+  'Luxembourg':        [49.8,   6.1], 'Andorra':           [42.5,   1.5],
+  'San Marino':        [43.9,  12.4], 'Monaco':            [43.7,   7.4],
+  'Liechtenstein':     [47.1,   9.5], 'North Macedonia':   [41.6,  21.7],
+  'Bosnia-Herzegovina':[44.2,  17.9], 'Montenegro':        [42.7,  19.4],
+  'Albania':           [41.2,  20.2], 'Kosovo':            [42.6,  20.9],
+  'Moldova':           [47.4,  28.4], 'Armenia':           [40.1,  44.9],
+  'Georgia':           [42.3,  43.4], 'Azerbaijan':        [40.5,  47.5],
+  'Kaliningrad':       [54.7,  20.5],
+  // Nordamerika
+  'United States':     [38.0, -97.0], 'Canada':            [56.0, -96.0],
+  'Mexico':            [23.6,-102.5], 'Alaska':            [64.0,-153.0],
+  'Hawaii':            [20.0,-157.0], 'Puerto Rico':       [18.2, -66.5],
+  'US Virgin Is.':     [18.3, -64.9], 'Guam':              [13.5, 144.8],
+  'Cuba':              [22.0, -80.0], 'Jamaica':           [18.1, -77.3],
+  'Dominican Republic':[18.7, -70.2], 'Haiti':             [18.9, -72.7],
+  'Bahamas':           [24.3, -77.0], 'Bermuda':           [32.3, -64.8],
+  'Barbados':          [13.2, -59.6], 'Trinidad & Tobago': [10.5, -61.3],
+  'Cayman Is.':        [19.3, -81.4], 'Turks & Caicos':    [21.7, -71.9],
+  // Sydamerika
+  'Brazil':            [-10.0,-55.0], 'Argentina':         [-34.0,-64.0],
+  'Chile':             [-30.0,-71.0], 'Colombia':          [  4.5,-74.0],
+  'Venezuela':         [  8.0,-66.0], 'Peru':              [ -9.2,-75.0],
+  'Uruguay':           [-32.5,-55.8], 'Paraguay':          [-23.0,-58.0],
+  'Ecuador':           [ -1.8,-78.0], 'Bolivia':           [-16.3,-63.6],
+  // Asien
+  'Japan':             [ 36.5, 138.0],'China':             [ 35.0, 104.0],
+  'India':             [ 22.0,  78.0],'South Korea':       [ 37.0, 128.0],
+  'Indonesia':         [ -5.0, 120.0],'Malaysia':          [  2.5, 112.5],
+  'Thailand':          [ 15.0, 101.0],'Philippines':       [ 13.0, 122.0],
+  'Vietnam':           [ 16.0, 107.0],'Taiwan':            [ 23.7, 121.0],
+  'Hong Kong':         [ 22.3, 114.2],'Singapore':         [  1.3, 103.8],
+  'Pakistan':          [ 30.0,  69.0],'Bangladesh':        [ 23.7,  90.4],
+  'Sri Lanka':         [  7.9,  80.7],'Nepal':             [ 28.0,  84.0],
+  'Kazakhstan':        [ 48.0,  68.0],'Uzbekistan':        [ 41.0,  63.8],
+  'Iran':              [ 32.0,  53.0],'Iraq':              [ 33.0,  43.7],
+  'Saudi Arabia':      [ 24.0,  45.0],'UAE':               [ 24.5,  54.5],
+  'Israel':            [ 31.5,  35.0],'Jordan':            [ 31.0,  36.0],
+  'Lebanon':           [ 33.9,  35.5],'Syria':             [ 35.0,  38.0],
+  'Kuwait':            [ 29.3,  47.7],'Qatar':             [ 25.3,  51.2],
+  'Oman':              [ 22.0,  57.0],'Yemen':             [ 15.5,  47.0],
+  'Myanmar':           [ 19.0,  96.7],'Cambodia':          [ 12.6, 104.9],
+  'Mongolia':          [ 46.8, 103.8],'North Korea':       [ 40.3, 127.5],
+  'Asiatic Russia':    [ 55.0,  90.0],
+  // Afrika
+  'South Africa':      [-29.0,  25.0],'Nigeria':           [  9.0,   8.0],
+  'Kenya':             [ -1.3,  36.8],'Ethiopia':          [  9.0,  40.0],
+  'Egypt':             [ 27.0,  30.0],'Morocco':           [ 31.8,  -7.1],
+  'Algeria':           [ 28.0,   2.6],'Tunisia':           [ 33.8,   9.6],
+  'Libya':             [ 27.0,  17.0],'Sudan':             [ 15.0,  30.0],
+  'Tanzania':          [ -6.4,  35.0],'Uganda':            [  1.4,  32.3],
+  'Ghana':             [  8.0,  -1.2],'Senegal':           [ 14.5, -14.5],
+  'Madagascar':        [-19.0,  46.9],'Zimbabwe':          [-19.0,  29.9],
+  'Zambia':            [-13.5,  28.0],'Angola':            [-11.2,  17.9],
+  'Mozambique':        [-18.3,  35.0],'Cameroon':          [  5.7,  12.4],
+  'Reunion Is.':       [-21.1,  55.5],'Mauritius':         [-20.3,  57.5],
+  'Seychelles':        [ -4.7,  55.5],'Ascension Is.':     [ -7.9, -14.4],
+  'St. Helena':        [-15.9,  -5.7],'Tristan da Cunha':  [-37.1, -12.3],
+  // Oceanien
+  'Australia':         [-25.3, 133.8],'New Zealand':       [-41.3, 174.8],
+  'Papua New Guinea':  [ -6.3, 143.9],'Fiji':              [-17.7, 178.1],
+  'Solomon Is.':       [ -9.6, 160.2],'Vanuatu':           [-16.0, 167.7],
+  'New Caledonia':     [-20.9, 165.6],'French Polynesia':  [-17.6,-149.4],
+  'Marshall Is.':      [  7.1, 171.2],'Micronesia':        [  7.4, 150.6],
+  // Övrigt
+  'Antarctica':        [-85.0,   0.0],
+};
+
+// Fallback-koordinater per kontinent om DXCC-entiteten saknas i tabellen
+const CONTINENT_CENTER = {
+  EU:[52,15], NA:[45,-95], SA:[-15,-60],
+  AF:[5,25],  AS:[35,90],  OC:[-25,135], AN:[-85,0]
+};
+
+// Bandfärger för karkörklar och tabellrader – matchar CSS-variablerna ovan
+const BAND_COLOR = {
+  '160m':'#cc2200','80m':'#ff4500','60m':'#996633','40m':'#ffa500',
+  '30m':'#ffd700', '20m':'#00cc44','17m':'#00ced1','15m':'#4169e1',
+  '12m':'#9400d3', '10m':'#ff1493','6m': '#ffffff', '2m': '#aaaaaa',
+  '70cm':'#666666','?':'#555555'
+};
+
+// ══════════════════════════════════════════════════════════
+//  Maidenhead-locator → [lat, lon]
+//
+//  Algoritm:
+//    Tecken 1–2 (A–R): grovrutnät 20° lon × 10° lat
+//    Tecken 3–4 (0–9): finrutnät 2° lon × 1° lat
+//    Tecken 5–6 (A–X, valfria): superfin 5' lon × 2,5' lat
+//
+//  Returnerar mitten av rutan, inte hörnet.
+// ══════════════════════════════════════════════════════════
+function maidenhead(grid) {
+  const g = grid.toUpperCase().trim();
+  if (g.length < 4) return null;
+  // Grovrutnät: A=0…R=17, 20° bredd → 0–340°, minus 180° = -180…+160°
+  let lon = (g.charCodeAt(0) - 65) * 20 - 180;
+  let lat = (g.charCodeAt(1) - 65) * 10 - 90;
+  // Finrutnät: siffra 0–9, 2° / 1° per steg
+  lon += (g.charCodeAt(2) - 48) * 2;
+  lat += (g.charCodeAt(3) - 48);
+  if (g.length >= 6) {
+    // 6-teckenlocator: superfin upplösning, centrera i rutan
+    lon += (g.charCodeAt(4) - 65) * (2/24) + (1/24);
+    lat += (g.charCodeAt(5) - 65) * (1/24) + (1/48);
+  } else {
+    // 4-teckenlocator: centrera i 2°×1°-rutan
+    lon += 1; lat += 0.5;
+  }
+  return [lat, lon];
+}
+
+/**
+ * Returnerar [lat, lon] för en DXCC-entitet.
+ * Prioritet: DXCC-tabell → kontinentcentrum → [0,0]
+ */
+function dxccPos(entity, continent) {
+  if (entity && DXCC[entity]) return DXCC[entity];
+  const c = (continent || '').toUpperCase();
+  return CONTINENT_CENTER[c] || [0, 0];
+}
+
+/**
+ * Beräknar storcirkelbäring (°) och avstånd (km) från hemstation till mål.
+ * Använder haversine-formeln för sfärisk geometri.
+ *
+ * @param {number} fromLat  Hemstation latitud
+ * @param {number} fromLon  Hemstation longitud
+ * @param {number} toLat    Målstation latitud
+ * @param {number} toLon    Målstation longitud
+ * @returns {{ bearing: number, distKm: number }}
+ */
+function geoCalc(fromLat, fromLon, toLat, toLon) {
+  const R = 6371; // Jordens radie i km
+  const φ1 = fromLat * Math.PI/180, φ2 = toLat * Math.PI/180;
+  const Δλ = (toLon - fromLon) * Math.PI/180;
+  // Bäring: atan2 av östlig och nordlig komponent
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  const bearing = ((Math.atan2(y, x) * 180/Math.PI) + 360) % 360;
+  // Haversine-avstånd
+  const a = Math.sin((φ2-φ1)/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return { bearing: Math.round(bearing), distKm: Math.round(dist) };
+}
+
+// ══════════════════════════════════════════════════════════
+//  Appens tillstånd (state)
+// ══════════════════════════════════════════════════════════
+let spots        = [];      // Alla spots i minnet (nyast först)
+let homeLatLon   = null;    // Hemstationens [lat, lon] (null tills locator sparats)
+let homeCallsign = '';      // Hemstationens callsign
+let audioOn      = false;   // Audio-notiser på/av
+let selectedId   = null;    // Vald spots ID (för detaljraden)
+let audioCtx     = null;    // Web Audio API-kontext (lazy-init)
+
+// Aktiva band i filtret – alla aktiva vid start
+const activeBands = new Set(['160m','80m','60m','40m','30m','20m','17m','15m','12m','10m','6m','2m']);
+
+// Kartmarkörer: spotId → L.circleMarker (för snabb lookup vid spot-klick)
+const markers = new Map();
+let homeMarker = null; // Stjärn-ikon för hemstationen
+
+// ══════════════════════════════════════════════════════════
+//  Leaflet-karta
+//
+//  Två tile-lager förbereds (ljust CartoDB Positron + mörkt Dark Matter).
+//  Vi byter lager när temat växlas, istf att ta bort och skapa om kartan.
+// ══════════════════════════════════════════════════════════
+const map = L.map('map', { zoomControl: true, attributionControl: true })
+              .setView([30, 10], 2);
+
+const TILES = {
+  light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 18,
+  }),
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 18,
+  }),
+};
+TILES.light.addTo(map); // Ljust tema är standard
+
+/**
+ * Lägger till en cirkelmarkör på kartan för en spot.
+ * Markören tas bort automatiskt efter 30 minuter.
+ *
+ * @param {object} spot  Spot-objekt
+ */
+function addMarker(spot) {
+  const pos = dxccPos(spot.entity, spot.continent);
+  if (!pos) return;
+  const color = BAND_COLOR[spot.band] || '#888';
+  const marker = L.circleMarker(pos, {
+    radius: 6, color: color, fillColor: color,
+    fillOpacity: 0.7, weight: 1.5, opacity: 0.9,
+  }).addTo(map);
+
+  // Tooltip: visas vid hover (ej klick, för att inte störa table-interaktion)
+  const label = `<b>${spot.fullCallsign}</b><br>${spot.frequency} MHz ${spot.band} ${spot.mode}<br>${spot.entity || spot.continent || ''}`;
+  marker.bindTooltip(label, { direction: 'top', offset: [0, -6] });
+  marker.on('click', () => selectSpot(spot.id));
+  markers.set(spot.id, marker);
+
+  // Auto-borttagning efter 30 minuter (matchar standard åldersfilter)
+  setTimeout(() => {
+    if (markers.has(spot.id)) { map.removeLayer(markers.get(spot.id)); markers.delete(spot.id); }
+  }, 30 * 60 * 1000);
+}
+
+/**
+ * Sätter hemstationens ikon (★) på kartan och centrerar kartan dit.
+ *
+ * @param {[number, number]} latLon  [lat, lon]
+ */
+function setHomeMarker(latLon) {
+  if (homeMarker) map.removeLayer(homeMarker);
+  // CSS-baserad stjärnikon via divIcon (ingen extern bildfil behövs)
+  const starIcon = L.divIcon({
+    html: '<div style="font-size:20px;line-height:1;transform:translate(-50%,-50%)">★</div>',
+    className: '', iconSize: [20,20], iconAnchor: [10,10]
+  });
+  homeMarker = L.marker(latLon, { icon: starIcon, zIndexOffset: 1000 })
+    .bindTooltip(homeCallsign || 'Home', { permanent: false })
+    .addTo(map);
+  map.setView(latLon, 4); // Zooma in på hemstationen vid inmatning
+}
+
+// ══════════════════════════════════════════════════════════
+//  Audio-notis (Web Audio API)
+//
+//  Skapar en kort 880 Hz sinuston (0.35 s) utan extern ljudfil.
+//  AudioContext är lazy-initierad för att kringgå browserns krav på
+//  att ljud bara får startas efter en användarinteraktion.
+// ══════════════════════════════════════════════════════════
+function ping() {
+  if (!audioOn) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 880; // Hz – typisk "pip"-ton
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+  // Exponentiell avklingsramp för naturligt ljud (undviker klick-artifakter)
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.35);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Filter-logik
+//
+//  Kontrollerar om en spot ska visas givet aktiva filter.
+//  Anropas vid varje tabellrendering och marköruppdatering.
+// ══════════════════════════════════════════════════════════
+function spotVisible(s) {
+  // Bandfilter: kolla om bandet finns i aktivt Set
+  if (!activeBands.has(s.band)) return false;
+
+  // Modusfilter: startsWith istf === för att matcha t.ex. "FT8" i "FT8/FT4"
+  const mode = document.getElementById('filter-mode').value;
+  if (mode && !s.mode.startsWith(mode)) return false;
+
+  // Kontinentfilter
+  const cont = document.getElementById('filter-cont').value;
+  if (cont && s.continent !== cont) return false;
+
+  // Källfilter (cluster, rbn, sotawatch etc.)
+  const src  = document.getElementById('filter-src').value;
+  if (src && s.source !== src) return false;
+
+  // Åldersfilter: jämför receivedAt mot nuvarande tid minus valt antal minuter
+  const ageMin = parseInt(document.getElementById('filter-age').value) || 0;
+  if (ageMin > 0) {
+    const cutoff = Date.now() - ageMin * 60 * 1000;
+    if (new Date(s.receivedAt).getTime() < cutoff) return false;
+  }
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════
+//  Tabell
+// ══════════════════════════════════════════════════════════
+
+/**
+ * Genererar inline-style för band-textfärg (används i callsign/freq/band-celler).
+ */
+function colorCell(band) {
+  const c = BAND_COLOR[band] || '#888';
+  return `style="color:${c};border-left:3px solid ${c}"`;
+}
+
+/**
+ * Skapar ett <tr>-element för en spot.
+ *
+ * Kommentarkolumnen kombinerar: spot.comment, SOTA/WWFF/POTA/IOTA-refs,
+ * SNR och CW-hastighet, plus avstånd/bäring om hemstation är satt.
+ *
+ * @param {object}  spot   Spot-objekt
+ * @param {boolean} isNew  true = lägg till ny-flash-animering
+ * @returns {HTMLTableRowElement}
+ */
+function makeRow(spot, isNew) {
+  // Beräkna avstånd/bäring om hemlocator är satt och entitet är känd
+  const geo = (homeLatLon && spot.entity)
+    ? geoCalc(homeLatLon[0], homeLatLon[1], ...dxccPos(spot.entity, spot.continent))
+    : null;
+
+  // Bygg kommentartext från alla relevanta fält
+  const commentParts = [];
+  if (spot.comment)      commentParts.push(spot.comment);
+  if (spot.summitRef)    commentParts.push(`SOTA:${spot.summitRef}`);
+  if (spot.wwffRef)      commentParts.push(`WWFF:${spot.wwffRef}`);
+  if (spot.potaRef)      commentParts.push(`POTA:${spot.potaRef}`);
+  if (spot.iotaGroupRef) commentParts.push(`IOTA:${spot.iotaGroupRef}`);
+  if (spot.snr)          commentParts.push(`${spot.snr}dB`);
+  if (spot.speed)        commentParts.push(`${spot.speed}wpm`);
+
+  const bc = BAND_COLOR[spot.band] || '#888';
+  const freq = spot.frequency ? spot.frequency.toFixed(3) : '';
+  // Visa modeDetail (t.ex. "FT8") om det skiljer sig från mode, annars mode
+  const modeStr = spot.modeDetail && spot.modeDetail !== spot.mode
+    ? spot.modeDetail : spot.mode;
+
+  const tr = document.createElement('tr');
+  tr.dataset.id = spot.id;
+  tr.style.borderLeftColor = bc; // Färgad vänsterkant = band-indikator
+  if (isNew) tr.classList.add('new-spot'); // Triggar CSS flash-animation
+
+  // QRZ-länken använder event.stopPropagation() för att inte trigga
+  // rad-klick (selectSpot) när man klickar på QRZ-knappen
+  tr.innerHTML = `
+    <td class="td-time"   >${spot.time || spot.receivedAt.slice(11,16)}</td>
+    <td class="td-qrz"   ><a href="${qrzUrl(spot.callsign||spot.fullCallsign)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">QRZ</a></td>
+    <td class="td-call"   style="color:${bc}">${esc(spot.fullCallsign)}</td>
+    <td class="td-freq"   style="color:${bc}">${freq}</td>
+    <td class="td-band"   style="color:${bc}">${esc(spot.band)}</td>
+    <td class="td-mode"   >${esc(modeStr)}</td>
+    <td class="td-spotter">${esc(spot.spotter)}</td>
+    <td class="td-entity" >${esc(spot.entity || spot.continent)}</td>
+    <td class="td-comment">${esc(commentParts.join(' · '))}${geo ? ` <span style="color:#555">· ${geo.distKm.toLocaleString()}km ${geo.bearing}°</span>` : ''}</td>
+  `;
+  tr.addEventListener('click', () => selectSpot(spot.id));
+  return tr;
+}
+
+/**
+ * HTML-escape för att förhindra XSS när spotdata injiceras i DOM.
+ */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/**
+ * Ritar om hela tabellen från spots-arrayen med aktiva filter.
+ * Anropas vid filterändring och vid initial sidladdning.
+ */
+function rebuildTable() {
+  const tbody = document.getElementById('spot-tbody');
+  tbody.innerHTML = '';
+  const visible = spots.filter(spotVisible).slice(0, 200);
+  visible.forEach(s => tbody.appendChild(makeRow(s, false)));
+  updateMarkerVisibility();
+}
+
+/**
+ * Uppdaterar kartmarkörer: synliga spots läggs till, filtrerade tas bort.
+ * Markers som redan är på kartan (addTo) utan att vara synliga tas bort.
+ */
+function updateMarkerVisibility() {
+  spots.forEach(s => {
+    const m = markers.get(s.id);
+    if (!m) return;
+    if (spotVisible(s)) m.addTo(map);
+    else map.removeLayer(m);
+  });
+}
+
+/**
+ * Lägger till en ny spot överst i tabellen (utan att rita om hela).
+ * Prunar rader som överstiger 200.
+ *
+ * @param {object} spot  Ny spot att visa
+ */
+function prependRow(spot) {
+  const tbody = document.getElementById('spot-tbody');
+  if (!spotVisible(spot)) return; // Lägg inte till om den filtreras bort
+  const tr = makeRow(spot, true); // true = ny-animation
+  tbody.insertBefore(tr, tbody.firstChild);
+  // Håll tabellen under 200 rader för prestanda
+  while (tbody.rows.length > 200) tbody.deleteRow(tbody.rows.length - 1);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Detaljrad (klicka på spot → visa alla fält längst ner)
+// ══════════════════════════════════════════════════════════
+function selectSpot(id) {
+  if (selectedId === id) return; // Klick på redan vald spot – ignorera
+  selectedId = id;
+  const spot = spots.find(s => s.id === id);
+  if (!spot) return;
+
+  // Markera vald rad i tabellen
+  document.querySelectorAll('#spot-tbody tr').forEach(r => {
+    r.classList.toggle('selected', r.dataset.id === id);
+  });
+
+  // Panorera kartan till markören och öppna tooltip
+  const m = markers.get(id);
+  if (m) { map.panTo(m.getLatLng()); m.openTooltip(); }
+
+  // Beräkna avstånd/bäring till hemstation
+  const geo = (homeLatLon && spot.entity)
+    ? geoCalc(homeLatLon[0], homeLatLon[1], ...dxccPos(spot.entity, spot.continent))
+    : null;
+
+  // Bygg extra-block för aktivitetsreferenser (SOTA, WWFF, POTA, IOTA)
+  const extras = [];
+  if (spot.summitRef)    extras.push(`<div class="d-group"><span class="d-label">SOTA</span><span class="d-val">${esc(spot.summitRef)} ${spot.summitName ? '· '+esc(spot.summitName) : ''} ${spot.summitHeight ? spot.summitHeight+'m' : ''}</span></div>`);
+  if (spot.wwffRef)      extras.push(`<div class="d-group"><span class="d-label">WWFF</span><span class="d-val">${esc(spot.wwffRef)} ${spot.wwffName ? '· '+esc(spot.wwffName) : ''}</span></div>`);
+  if (spot.potaRef)      extras.push(`<div class="d-group"><span class="d-label">POTA</span><span class="d-val">${esc(spot.potaRef)}</span></div>`);
+  if (spot.iotaGroupRef) extras.push(`<div class="d-group"><span class="d-label">IOTA</span><span class="d-val">${esc(spot.iotaGroupRef)} ${spot.iotaGroupName ? '· '+esc(spot.iotaGroupName) : ''}</span></div>`);
+  if (spot.snr)          extras.push(`<div class="d-group"><span class="d-label">SNR</span><span class="d-val">${esc(spot.snr)} dB</span></div>`);
+  if (spot.speed)        extras.push(`<div class="d-group"><span class="d-label">Speed</span><span class="d-val">${esc(spot.speed)} WPM</span></div>`);
+  if (spot.qsl)          extras.push(`<div class="d-group"><span class="d-label">QSL</span><span class="d-val">${esc(spot.qsl)}</span></div>`);
+
+  const bc = BAND_COLOR[spot.band] || '#888';
+  document.getElementById('detail').innerHTML = `
+    <span class="d-call" style="color:${bc}">${esc(spot.fullCallsign)}</span>
+    <a href="${qrzUrl(spot.callsign || spot.fullCallsign)}" target="_blank" rel="noopener"
+       style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;color:var(--accent);text-decoration:none;white-space:nowrap;">QRZ ↗</a>
+    <div class="d-group"><span class="d-label">Freq / Band</span><span class="d-val">${spot.frequency} MHz · ${esc(spot.band)}</span></div>
+    <div class="d-group"><span class="d-label">Mode</span><span class="d-val">${esc(spot.modeDetail||spot.mode)}</span></div>
+    <div class="d-group"><span class="d-label">Entity</span><span class="d-val">${esc(spot.entity||'—')} (${esc(spot.continent||'?')})</span></div>
+    <div class="d-group"><span class="d-label">CQ Zone</span><span class="d-val">${esc(spot.cq||'—')}</span></div>
+    <div class="d-group"><span class="d-label">Spotter</span><span class="d-val">${esc(spot.spotter)} ${spot.spotterEntity ? '('+esc(spot.spotterEntity)+')' : ''}</span></div>
+    ${spot.comment ? `<div class="d-group"><span class="d-label">Comment</span><span class="d-val">${esc(spot.comment)}</span></div>` : ''}
+    ${geo ? `<div class="d-group"><span class="d-label">Distance</span><span class="d-val">${geo.distKm.toLocaleString()} km</span></div><div class="d-group"><span class="d-label">Bearing</span><span class="d-val">${geo.bearing}°</span></div>` : ''}
+    ${spot.source ? `<div class="d-group"><span class="d-label">Source</span><span class="d-val">${esc(spot.source)}</span></div>` : ''}
+    ${extras.join('')}
+  `;
+}
+
+// ══════════════════════════════════════════════════════════
+//  QRZ.com-integration
+// ══════════════════════════════════════════════════════════
+
+/**
+ * Bygger QRZ.com-URL för ett callsign.
+ * Snedstreck (t.ex. OH/SM5ABC) tas bort – QRZ vill ha basanropet.
+ */
+function qrzUrl(callsign) {
+  return `https://www.qrz.com/db/${encodeURIComponent(callsign.replace(/\//g, ''))}`;
+}
+
+// ── QRZ XML API-stub ─────────────────────────────────────
+// Aktivera detta när QRZ XML-prenumerationsnyckel finns.
+// Nyckeln sparas i localStorage ('ha_qrz_key') och hämtas här.
+// Returnerar { image, name, addr } eller null om nyckel saknas.
+//
+// async function fetchQRZ(callsign) {
+//   const key = localStorage.getItem('ha_qrz_key');
+//   if (!key) return null;
+//   const url = `https://xmldata.qrz.com/xml/current/?s=${key};callsign=${callsign}`;
+//   const res = await fetch(url);
+//   const txt = await res.text();
+//   const parser = new DOMParser();
+//   const xml = parser.parseFromString(txt, 'text/xml');
+//   return {
+//     image: xml.querySelector('image')?.textContent || null,
+//     name:  xml.querySelector('fname')?.textContent + ' ' + xml.querySelector('name')?.textContent,
+//     addr:  xml.querySelector('addr2')?.textContent,
+//   };
+// }
+
+// ══════════════════════════════════════════════════════════
+//  UTC-klocka (uppdateras varje sekund)
+// ══════════════════════════════════════════════════════════
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('utc-clock').textContent =
+    d.toUTCString().slice(17,25) + ' UTC';
+}, 1000);
+
+// ══════════════════════════════════════════════════════════
+//  WebSocket
+//
+//  Ansluter till ws(s)://hamserver.local:<port>/ws.
+//  Protokoll (ws/wss) väljs automatiskt baserat på HTTP/HTTPS.
+//  Automatisk återanslutning med 5 sekunders fördröjning.
+// ══════════════════════════════════════════════════════════
+function setStatus(ok, text) {
+  document.getElementById('status-dot').className = ok ? 'ok' : 'err';
+  document.getElementById('status-text').textContent = text;
+}
+
+function updateCount(n) {
+  document.getElementById('spots-count').textContent = `${n.toLocaleString()} spots today`;
+}
+
+let ws, reconnectTimer;
+
+function connect() {
+  clearTimeout(reconnectTimer);
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => setStatus(true, 'Connected');
+
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'init') {
+      // Initial historik vid anslutning: ersätt hela spots-arrayen
+      spots = msg.spots;
+      rebuildTable();
+      msg.spots.forEach(s => addMarker(s));
+      updateCount(msg.spotsToday);
+
+    } else if (msg.type === 'spot') {
+      // Ny spot: lägg till i minnet, kartan och tabellen
+      spots.unshift(msg.data);
+      if (spots.length > 500) spots.length = 500;
+      addMarker(msg.data);
+      prependRow(msg.data);
+      updateCount(msg.spotsToday);
+      ping(); // Audio-notis om aktiverat
+    }
+  };
+
+  ws.onclose = () => {
+    setStatus(false, 'Disconnected — reconnecting…');
+    reconnectTimer = setTimeout(connect, 5000); // Försök igen om 5 s
+  };
+  ws.onerror = () => ws.close(); // Låt onclose hantera återanslutning
+}
+
+// ══════════════════════════════════════════════════════════
+//  Användarinställningar (callsign + locator)
+//
+//  Sparas i localStorage (ha_call, ha_loc) och läses in vid start.
+// ══════════════════════════════════════════════════════════
+function applySettings(call, loc) {
+  homeCallsign = call.toUpperCase();
+  document.getElementById('inp-call').value = homeCallsign;
+  document.getElementById('inp-loc').value  = loc.toUpperCase();
+  const pos = maidenhead(loc);
+  if (pos) {
+    homeLatLon = pos;
+    setHomeMarker(pos);
+    rebuildTable(); // Räkna om avstånd/bäring för alla spots
+  }
+}
+
+function saveSettings() {
+  const call = document.getElementById('inp-call').value.trim();
+  const loc  = document.getElementById('inp-loc').value.trim();
+  if (!call || !loc) return;
+  localStorage.setItem('ha_call', call);
+  localStorage.setItem('ha_loc',  loc);
+  applySettings(call, loc);
+}
+
+// ══════════════════════════════════════════════════════════
+//  Initiering (körs när DOM är klar)
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+
+  // ── Bandpiller ───────────────────────────────────────
+  // Klick växlar bandet i/ur activeBands-setet och ritar om tabellen
+  document.querySelectorAll('.band-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const b = pill.dataset.band;
+      if (activeBands.has(b)) { activeBands.delete(b); pill.classList.remove('active'); }
+      else                     { activeBands.add(b);    pill.classList.add('active'); }
+      rebuildTable();
+    });
+  });
+
+  // ── Dropdown-filter (mode, kontinent, källa, ålder) ──
+  ['filter-mode','filter-cont','filter-src','filter-age'].forEach(id => {
+    document.getElementById(id).addEventListener('change', rebuildTable);
+  });
+
+  // ── Tema-toggle (ljust/mörkt) ─────────────────────
+  // Temat sparas i localStorage och läses in direkt för att undvika flash.
+  // Kartlagren byts synkront med temavalet.
+  let darkMode = localStorage.getItem('ha_theme') === 'dark';
+  function applyTheme() {
+    document.documentElement.classList.toggle('dark', darkMode);
+    const btn = document.getElementById('btn-theme');
+    btn.textContent = darkMode ? '☀️ Light' : '🌙 Dark';
+    // Byt kartlager – remove() + addTo() utan att skapa nytt lager
+    if (darkMode) { TILES.light.remove(); TILES.dark.addTo(map); }
+    else           { TILES.dark.remove();  TILES.light.addTo(map); }
+    localStorage.setItem('ha_theme', darkMode ? 'dark' : 'light');
+  }
+  applyTheme(); // Tillämpa direkt vid start
+
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    darkMode = !darkMode; applyTheme();
+  });
+
+  // ── Audio-toggle ─────────────────────────────────
+  // AudioContext skapas lazy (kräver användarinteraktion i moderna browsers)
+  document.getElementById('btn-audio').addEventListener('click', () => {
+    audioOn = !audioOn;
+    const btn = document.getElementById('btn-audio');
+    btn.textContent = audioOn ? '🔔 Audio' : '🔇 Audio';
+    btn.classList.toggle('on', audioOn);
+    // Initiera AudioContext direkt vid aktivering (ej vid ping)
+    if (audioOn && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  });
+
+  // ── Header Save-knapp ─────────────────────────────
+  document.getElementById('btn-save').addEventListener('click', saveSettings);
+  // Enter i inmatningsfälten triggar Save
+  document.getElementById('inp-call').addEventListener('keydown', e => e.key==='Enter' && saveSettings());
+  document.getElementById('inp-loc' ).addEventListener('keydown', e => e.key==='Enter' && saveSettings());
+
+  // ── Setup-overlay ─────────────────────────────────
+  // Visas om callsign/locator saknas i localStorage (första besöket)
+  const savedCall = localStorage.getItem('ha_call');
+  const savedLoc  = localStorage.getItem('ha_loc');
+  if (savedCall && savedLoc) {
+    applySettings(savedCall, savedLoc);
+  } else {
+    document.getElementById('setup-overlay').style.display = 'flex';
+  }
+
+  // Default-knapp: fyller i testcallsign/locator (8S0HRA/JO99BH)
+  document.getElementById('btn-default').addEventListener('click', () => {
+    document.getElementById('setup-call').value = '8S0HRA';
+    document.getElementById('setup-loc').value  = 'JO99BH';
+  });
+
+  document.getElementById('btn-setup-save').addEventListener('click', () => {
+    const call = document.getElementById('setup-call').value.trim();
+    const loc  = document.getElementById('setup-loc').value.trim();
+    if (!call || !loc) return;
+    localStorage.setItem('ha_call', call);
+    localStorage.setItem('ha_loc',  loc);
+    applySettings(call, loc);
+    document.getElementById('setup-overlay').style.display = 'none';
+  });
+
+  // ── Kolumnresize ──────────────────────────────────
+  //
+  // Varje th (utom sista) får ett draghandtag (.col-resize).
+  // Bredder sparas i localStorage (ha_col_widths) som JSON-array.
+  // Dubbelklick på handtaget återställer kolumnen till standard.
+  // "⟺ Cols"-knappen återställer alla kolumner.
+  //
+  // Standardbredder (px) per kolumnindex:
+  //   0=UTC, 1=QRZ, 2=Call, 3=Freq, 4=Band, 5=Mode, 6=Spotter, 7=Entity, 8=Comment
+  const COL_DEFAULTS = [46, 36, 110, 76, 42, 44, 90, 110, 999];
+
+  function getColWidths() {
+    return JSON.parse(localStorage.getItem('ha_col_widths') || 'null') || COL_DEFAULTS;
+  }
+
+  function saveColWidths(ths) {
+    localStorage.setItem('ha_col_widths', JSON.stringify(
+      Array.from(ths).map(th => th.offsetWidth)
+    ));
+  }
+
+  function applyColWidths(ths, widths) {
+    ths.forEach((th, i) => {
+      // Sista kolumnen (Comment) får auto-bredd (fyller kvarvarande utrymme)
+      if (widths[i] && widths[i] < 900) th.style.width = widths[i] + 'px';
+      else th.style.width = '';
+    });
+  }
+
+  function initColResize() {
+    const ths = Array.from(document.querySelectorAll('thead th'));
+    applyColWidths(ths, getColWidths());
+
+    ths.forEach((th, i) => {
+      if (i === ths.length - 1) return; // Inget handtag på sista kolumnen
+      th.style.position = 'relative';   // Krävs för absolut-positionerat handtag
+
+      const handle = document.createElement('span');
+      handle.className = 'col-resize';
+      th.appendChild(handle);
+
+      // Dubbelklick: återställ denna kolumn till standardbredd
+      handle.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        th.style.width = (COL_DEFAULTS[i] || '') + 'px';
+        saveColWidths(ths);
+      });
+
+      // Mousedown: starta drag
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault(); e.stopPropagation();
+        const startX = e.clientX;
+        const startW = th.offsetWidth;
+        handle.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none'; // Förhindra textmarkering
+
+        const onMove = e => {
+          const newW = Math.max(24, startW + e.clientX - startX); // Min 24px
+          th.style.width = newW + 'px';
+        };
+        const onUp = () => {
+          handle.classList.remove('dragging');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          saveColWidths(ths);
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+
+    // Återställ alla kolumner till standard
+    document.getElementById('btn-reset-cols').addEventListener('click', () => {
+      applyColWidths(ths, COL_DEFAULTS);
+      localStorage.removeItem('ha_col_widths');
+    });
+  }
+
+  initColResize();
+
+  // ── Karta/tabell-splitter (horisontellt drag) ─────
+  //
+  // Draghandtaget (#resize-handle) låter användaren justera
+  // kartan 20–80% av huvudytans bredd. Positionen sparas i
+  // localStorage (ha_map_width) som procentvärde.
+  //
+  // map.invalidateSize() måste anropas efter storleksändring
+  // för att Leaflet ska rita om tiles korrekt.
+  const mapWrap  = document.getElementById('map-wrap');
+  const handle   = document.getElementById('resize-handle');
+  const mainEl   = document.getElementById('main');
+
+  // Återställ sparad bredd vid start
+  const savedW = localStorage.getItem('ha_map_width');
+  if (savedW) mapWrap.style.width = savedW;
+
+  let dragging = false;
+
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const rect = mainEl.getBoundingClientRect();
+    let pct = ((e.clientX - rect.left) / rect.width) * 100;
+    pct = Math.min(80, Math.max(20, pct)); // Begränsa 20–80%
+    mapWrap.style.width = pct + '%';
+    map.invalidateSize(); // Leaflet måste veta om storleksändringen
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    localStorage.setItem('ha_map_width', mapWrap.style.width);
+  });
+
+  // Touch-stöd för mobila enheter
+  handle.addEventListener('touchstart', e => {
+    dragging = true; e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const rect = mainEl.getBoundingClientRect();
+    let pct = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
+    pct = Math.min(80, Math.max(20, pct));
+    mapWrap.style.width = pct + '%';
+    map.invalidateSize();
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!dragging) return;
+    dragging = false;
+    localStorage.setItem('ha_map_width', mapWrap.style.width);
+  });
+
+  // Starta WebSocket-anslutningen
+  connect();
+});
+</script>
+</body>
+</html>
