@@ -1,0 +1,85 @@
+name: Release
+
+# Triggas när du pushar en tagg som börjar med "v", t.ex. v0.2.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write   # Krävs för att skapa GitHub Release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Apple Silicon (M1/M2/M3)
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+          # macOS Intel
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+          # Linux
+          - platform: ubuntu-22.04
+            args: ''
+          # Windows
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Lägg till macOS cross-compile targets
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install npm dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signeringsnyckel för auto-updater (genereras med: npm run tauri signer generate)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: HamAlert DX Receiver ${{ github.ref_name }}
+          releaseBody: |
+            ## Vad är nytt
+            Se commits för ändringar sedan förra versionen.
+
+            ## Installation
+            - **macOS**: Ladda ner `.dmg`, öppna och dra appen till Applications
+            - **Windows**: Ladda ner `.msi` och kör installeraren
+            - **Linux**: Ladda ner `.AppImage`, gör den körbar (`chmod +x`) och kör
+          releaseDraft: true      # Publicera manuellt efter granskning
+          prerelease: false
+          projectPath: desktop
+          args: ${{ matrix.args }}
+          # Genererar latest.json som laddas upp som release asset (krävs av updater)
+          updaterJsonPreferNsis: false
