@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HamAlert DX Receiver",
+  "version": "0.1.0",
+  "identifier": "com.spocktech.hamalert",
+  "build": {
+    "frontendDist": "../src"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "HamAlert DX Receiver",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwQTdBMTFDN0FENjE5QjgKUldTNEdkWjZIS0duWUJvMWE4dDhycnQydXl6M0hvazVlMUF1d0p3RmorZkhBWjNsZzVOOWFlK1gK",
+      "endpoints": [
+        "https://github.com/mrspock64/hamalert-receiver/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
