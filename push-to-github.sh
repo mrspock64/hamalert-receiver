@@ -54,7 +54,7 @@ git commit -m "Initial commit: HamAlert DX Receiver v1.0
 # Skapa GitHub-repo med GitHub CLI och pusha
 gh repo create "$REPO_NAME" \
   --description "$DESCRIPTION" \
-  --public \
+  --private \
   --source=. \
   --remote=origin \
   --push
