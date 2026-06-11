@@ -7,24 +7,55 @@ on:
       - 'v*'
 
 jobs:
+  # ── macOS install-helper (körs en gång, inte per plattform) ───────────────────
+  macos-helper:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create macOS install helper script
+        run: |
+          cat > "Installera macOS.command" << 'EOF'
+          #!/usr/bin/env bash
+          # HamAlert DX Receiver – macOS installationshjälp
+          # Tar bort Gatekeepers karantänflagga och startar appen.
+          APP="/Applications/HamAlert DX Receiver.app"
+          if [ ! -d "$APP" ]; then
+            osascript -e 'display dialog "Flytta HamAlert DX Receiver.app till mappen Program (/Applications) och kör sedan detta skript igen." buttons {"OK"} default button "OK" with icon caution'
+            exit 1
+          fi
+          echo "Tar bort karantänflagga..."
+          xattr -cr "$APP"
+          echo "Startar appen..."
+          open "$APP"
+          echo "Klart!"
+          EOF
+          chmod +x "Installera macOS.command"
+
+      - name: Upload helper to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "Installera macOS.command"
+          draft: true
+
+  # ── Bygg för alla plattformar ─────────────────────────────────────────────────
   release:
     permissions:
-      contents: write   # Krävs för att skapa GitHub Release
+      contents: write
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS Apple Silicon (M1/M2/M3)
           - platform: macos-latest
             args: --target aarch64-apple-darwin
-          # macOS Intel
           - platform: macos-latest
             args: --target x86_64-apple-darwin
-          # Linux
           - platform: ubuntu-22.04
             args: ''
-          # Windows
           - platform: windows-latest
             args: ''
 
@@ -42,7 +73,6 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Lägg till macOS cross-compile targets
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install Linux system dependencies
@@ -63,23 +93,27 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signeringsnyckel för auto-updater (genereras med: npm run tauri signer generate)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: HamAlert DX Receiver ${{ github.ref_name }}
           releaseBody: |
-            ## Vad är nytt
-            Se commits för ändringar sedan förra versionen.
-
             ## Installation
-            - **macOS**: Ladda ner `.dmg`, öppna och dra appen till Applications
-            - **Windows**: Ladda ner `.msi` och kör installeraren
-            - **Linux**: Ladda ner `.AppImage`, gör den körbar (`chmod +x`) och kör
-          releaseDraft: true      # Publicera manuellt efter granskning
+
+            ### macOS
+            1. Ladda ner `.dmg`-filen och `Installera macOS.command`
+            2. Öppna `.dmg` och dra appen till **Program**
+            3. Dubbelklicka på `Installera macOS.command` – den tar bort Gatekeepers spärr och startar appen
+
+            ### Windows
+            Ladda ner `.msi` och kör installeraren.
+
+            ### Linux
+            Ladda ner `.AppImage`, gör den körbar (`chmod +x`) och kör.
+
+          releaseDraft: true
           prerelease: false
           projectPath: desktop
           args: ${{ matrix.args }}
-          # Genererar latest.json som laddas upp som release asset (krävs av updater)
           updaterJsonPreferNsis: false
