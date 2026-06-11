@@ -106,12 +106,48 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
 #spots-count { color: var(--text-dim); font-size: 12px; }
 #utc-clock { font-family: var(--font-call); font-size: 13px; color: var(--accent); }
 
-#btn-audio, #btn-theme {
+#btn-audio, #btn-theme, #btn-settings {
   background: none; border: 1px solid var(--text-dim); border-radius: 4px;
   color: var(--text-dim); padding: 3px 8px; cursor: pointer; font-size: 11px;
 }
-#btn-audio:hover, #btn-theme:hover { border-color: var(--text); color: var(--text); }
+#btn-audio:hover, #btn-theme:hover, #btn-settings:hover { border-color: var(--text); color: var(--text); }
 #btn-audio.on { color: #cc8800; border-color: #cc8800; }
+
+/* ── Settings sidopanel ───────────────────────────────── */
+#settings-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+  background: var(--bg2); border-left: 1px solid var(--border);
+  box-shadow: -4px 0 24px rgba(0,0,0,.25);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .25s ease;
+  z-index: 8000;
+}
+#settings-panel.open { transform: translateX(0); }
+#settings-panel h3 {
+  font-size: 14px; font-weight: 700; color: var(--accent);
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--border); margin: 0;
+}
+.sp-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.sp-section label {
+  display: block; font-size: 11px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
+}
+.sp-section input, .sp-section select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); padding: 7px 10px;
+  font-size: 13px; margin-bottom: 10px;
+}
+.sp-section input:focus, .sp-section select:focus {
+  outline: none; border-color: var(--accent);
+}
+#btn-sp-reconnect {
+  width: 100%; background: var(--accent); border: none; border-radius: 6px;
+  color: #fff; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+  margin-top: 4px;
+}
+#btn-sp-reconnect:hover { filter: brightness(1.15); }
+.sp-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
 
 /* ── Filterrad ────────────────────────────────────────── */
 #filters {
@@ -250,30 +286,89 @@ tbody td {
 #detail .d-group { display: flex; flex-direction: column; }
 #detail-empty { color: var(--text-dim); font-size: 12px; }
 
-/* ── Setup-overlay (visas vid första besöket) ─────────── */
-#setup-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.8);
-  display: flex; align-items: center; justify-content: center; z-index: 9000;
+/* ── Onboarding Wizard ────────────────────────────────── */
+#wizard {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9200;
+  backdrop-filter: blur(4px);
 }
-#setup-box {
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
-  padding: 32px 36px; max-width: 360px; width: 90%;
+#wizard-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0;
+  max-width: 460px; width: 92%;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  overflow: hidden;
+  display: flex; flex-direction: column;
 }
-#setup-box h2 { color: var(--accent); margin-bottom: 6px; font-size: 17px; }
-#setup-box p  { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; line-height: 1.5; }
-.setup-field  { margin-bottom: 14px; }
-.setup-field label { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 4px; }
+#wizard-head {
+  background: var(--accent);
+  padding: 18px 28px 16px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+#wizard-head-title {
+  font-size: 15px; font-weight: 700; color: #fff; letter-spacing: .03em;
+}
+#wizard-head-sub {
+  font-size: 11px; color: rgba(255,255,255,.65); font-family: var(--font-call);
+}
+#wizard-body { padding: 28px 32px 20px; flex: 1; }
+.wz-icon { font-size: 36px; margin-bottom: 14px; line-height: 1; }
+.wz-step h2 { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.wz-step p  { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 10px; }
+.wz-link {
+  display: inline-block; margin: 6px 0 12px;
+  font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600;
+}
+.wz-link:hover { opacity: .8; }
+.wz-steps-list {
+  font-size: 13px; color: var(--text-dim); line-height: 1.8;
+  margin: 8px 0 12px 18px;
+}
+.wz-steps-list strong { color: var(--text); }
+.wz-hint { font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 6px !important; }
+.setup-field { margin-bottom: 14px; }
+.setup-field label { display: block; color: var(--text-dim); font-size: 11px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .06em; }
 .setup-field input {
   width: 100%; background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 5px; color: var(--text); padding: 8px 10px;
+  border-radius: 6px; color: var(--text); padding: 9px 11px;
   font-family: var(--font-call); font-size: 14px; outline: none;
 }
-.setup-field input:focus { border-color: var(--accent); }
-#btn-setup-save {
-  width: 100%; background: var(--accent); border: none; border-radius: 6px;
-  color: #fff; padding: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+.setup-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,119,204,.18); }
+#wizard-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px 20px;
+  border-top: 1px solid var(--border);
 }
-#btn-setup-save:hover { opacity: .85; }
+#wizard-dots { display: flex; gap: 7px; }
+.wz-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border); transition: background .2s;
+}
+.wz-dot.active { background: var(--accent); }
+#wz-back, #wz-next {
+  border: none; border-radius: 7px; cursor: pointer;
+  font-size: 13px; font-weight: 600; padding: 8px 20px;
+}
+#wz-back { background: var(--bg3); color: var(--text-dim); }
+#wz-back:hover { color: var(--text); }
+#wz-next { background: var(--accent); color: #fff; }
+#wz-next:hover { opacity: .88; }
+#wz-back[style*="display:none"], #wz-back[style*="display: none"] { visibility: hidden; }
+#wizard-credit {
+  text-align: center; font-size: 11px; color: var(--text-dim);
+  font-family: var(--font-call); letter-spacing: .08em;
+  padding: 0 0 14px; opacity: .6;
+}
+/* dev-badge i headern */
+#dev-badge {
+  font-size: 10px; font-weight: 400; color: var(--text-dim);
+  font-family: var(--font-call); letter-spacing: .06em;
+  opacity: .7; margin-left: 4px;
+}
 
 /* ── Responsiv / mobil ────────────────────────────────── */
 @media (max-width: 768px) {
@@ -322,14 +417,14 @@ tbody td {
 
   <!-- Header: logga, callsign/locator-inmatning, status, klocka, knappar -->
   <div id="header">
-    <div id="logo">⚡ HamAlert <span>DX Receiver</span></div>
+    <div id="logo">⚡ HamAlert <span>DX Receiver</span><span id="dev-badge">de SA0LEK</span></div>
     <div class="hdr-sep"></div>
     <div id="setup-form">
-      <label>Call</label>
+      <label data-i18n="hdr.call">Call</label>
       <input id="inp-call" type="text" placeholder="SM5ABC" maxlength="12" autocomplete="off">
-      <label>Locator</label>
+      <label data-i18n="hdr.locator">Locator</label>
       <input id="inp-loc"  type="text" placeholder="JO89WI" maxlength="8"  autocomplete="off">
-      <button id="btn-save">Save</button>
+      <button id="btn-save" data-i18n="hdr.save">Save</button>
     </div>
     <div id="hdr-right">
       <div id="status-wrap">
@@ -340,6 +435,7 @@ tbody td {
       <div id="utc-clock">--:--:-- UTC</div>
       <button id="btn-theme" title="Toggle dark/light mode">🌙 Dark</button>
       <button id="btn-audio" title="Toggle audio alerts">🔇 Audio</button>
+      <button id="btn-settings" title="Settings">⚙️</button>
     </div>
   </div>
 
@@ -394,10 +490,13 @@ tbody td {
     <label>Age:</label>
     <select id="filter-age" class="filter-sel">
       <option value="0">All time</option>
-      <option value="5">5 Minutes</option>
-      <option value="15">15 Minutes</option>
-      <option value="30" selected>30 Minutes</option>
-      <option value="60">1 Hour</option>
+      <option value="5">5 min</option>
+      <option value="15">15 min</option>
+      <option value="30" selected>30 min</option>
+      <option value="60">1 hour</option>
+      <option value="120">2 hours</option>
+      <option value="240">4 hours</option>
+      <option value="480">8 hours</option>
     </select>
     <div id="filter-sep"></div>
     <!-- Återställer alla kolumnbredder till standardvärden -->
@@ -439,30 +538,344 @@ tbody td {
 
 </div><!-- #app -->
 
-<!-- Setup-overlay: visas vid första besöket (ingen callsign/locator i localStorage) -->
-<div id="setup-overlay" style="display:none">
-  <div id="setup-box">
-    <h2>Welcome to HamAlert Receiver</h2>
-    <p>Enter your callsign and Maidenhead locator to position your station on the map and calculate bearing/distance to DX stations.</p>
-    <div class="setup-field">
-      <label>Your Callsign</label>
-      <input id="setup-call" type="text" placeholder="SM5ABC" maxlength="12" autocomplete="off">
+<!-- Onboarding Wizard – visas vid första uppstart om credentials saknas -->
+<div id="wizard" style="display:none">
+  <div id="wizard-box">
+
+    <!-- Header -->
+    <div id="wizard-head">
+      <span id="wizard-head-title">⚡ HamAlert DX Receiver</span>
+      <span id="wizard-head-sub">Setup Wizard</span>
     </div>
-    <div class="setup-field">
-      <label>Your Locator (4 or 6 chars)</label>
-      <input id="setup-loc" type="text" placeholder="JO89WI" maxlength="8" autocomplete="off">
+
+    <div id="wizard-body">
+
+      <!-- Steg 1: Välkommen / Skapa konto -->
+      <div class="wz-step" id="wz-step-1">
+        <div class="wz-icon">📡</div>
+        <h2>Välkommen!</h2>
+        <p>HamAlert DX Receiver visar DX-spots i realtid på en karta. Du behöver ett gratis <strong>HamAlert-konto</strong> för att ta emot spots.</p>
+        <p>Har du inget konto ännu? Registrera dig här:</p>
+        <a class="wz-link" href="#" id="wz-link-register">→ Skapa konto på hamalert.org</a>
+        <p class="wz-hint">Har du redan ett konto? Klicka bara Nästa.</p>
+      </div>
+
+      <!-- Steg 2: Sätt upp ett trigger -->
+      <div class="wz-step" id="wz-step-2" style="display:none">
+        <div class="wz-icon">🎯</div>
+        <h2>Sätt upp ett Trigger</h2>
+        <p>Ett <strong>trigger</strong> i HamAlert talar om vilka spots du vill ha — band, mode, entitet, callsign-prefix m.m.</p>
+        <p>Utan ett trigger får du inga spots alls. Skapa minst ett:</p>
+        <a class="wz-link" href="#" id="wz-link-triggers">→ Öppna hamalert.org/triggers</a>
+        <p class="wz-hint">Skapa ett trigger och kom sedan tillbaka hit.</p>
+      </div>
+
+      <!-- Steg 3: Telnet-lösenord -->
+      <div class="wz-step" id="wz-step-3" style="display:none">
+        <div class="wz-icon">🔑</div>
+        <h2>Hitta ditt Telnet-lösenord</h2>
+        <p>HamAlert använder ett <strong>separat Telnet-lösenord</strong> — inte ditt vanliga inloggningslösenord.</p>
+        <ol class="wz-steps-list">
+          <li>Logga in på hamalert.org</li>
+          <li>Gå till <strong>My Account → Telnet</strong></li>
+          <li>Kopiera ditt Telnet-lösenord</li>
+        </ol>
+        <a class="wz-link" href="#" id="wz-link-account">→ Öppna hamalert.org/myaccount</a>
+      </div>
+
+      <!-- Steg 4: Din station -->
+      <div class="wz-step" id="wz-step-4" style="display:none">
+        <div class="wz-icon">🗺️</div>
+        <h2>Din Station</h2>
+        <p>Ange ditt callsign och Maidenhead-locator för att visa din position på kartan och beräkna bäring/avstånd till DX-stationer.</p>
+        <div class="setup-field">
+          <label id="label-wz-call">Ditt Callsign</label>
+          <input id="wz-call" type="text" placeholder="SA0LEK" maxlength="12" autocomplete="off">
+        </div>
+        <div class="setup-field">
+          <label id="label-wz-loc">Din Locator (4 eller 6 tecken)</label>
+          <input id="wz-loc" type="text" placeholder="JO89XI" maxlength="8" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Steg 5: HamAlert-login -->
+      <div class="wz-step" id="wz-step-5" style="display:none">
+        <div class="wz-icon">🔐</div>
+        <h2>Anslut till HamAlert</h2>
+        <p>Ange ditt HamAlert-användarnamn och Telnet-lösenordet från föregående steg.</p>
+        <div class="setup-field">
+          <label id="label-wz-user">HamAlert Username</label>
+          <input id="wz-user" type="text" autocomplete="off" placeholder="ditt_username">
+        </div>
+        <div class="setup-field">
+          <label id="label-wz-pass">Telnet-lösenord</label>
+          <input id="wz-pass" type="password" autocomplete="off" placeholder="••••••••">
+          <p class="sp-hint wz-hint" style="margin-top:5px">Hittas under Account → Telnet på hamalert.org — inte ditt vanliga lösenord.</p>
+        </div>
+      </div>
+
+    </div><!-- #wizard-body -->
+
+    <!-- Navigation -->
+    <div id="wizard-nav">
+      <button id="wz-back">← Tillbaka</button>
+      <div id="wizard-dots">
+        <span class="wz-dot active"></span>
+        <span class="wz-dot"></span>
+        <span class="wz-dot"></span>
+        <span class="wz-dot"></span>
+        <span class="wz-dot"></span>
+      </div>
+      <button id="wz-next">Nästa →</button>
     </div>
-    <!-- Defaultknapp: fyller i 8S0HRA / JO99BH för testning/demo -->
-    <button id="btn-default" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);padding:8px;font-size:12px;cursor:pointer;margin-bottom:8px;">
-      Use default: 8S0HRA / JO99BH
-    </button>
-    <button id="btn-setup-save">Get Started</button>
+
+    <div id="wizard-credit">73 de SA0LEK</div>
+
   </div>
 </div>
+
+<!-- Settings sidopanel (Tauri desktop) -->
+<div id="settings-panel">
+  <h3 id="sp-title-el" data-i18n="sp.title">⚙️ Settings</h3>
+
+  <div class="sp-section">
+    <label data-i18n="sp.lang.label">Language</label>
+    <select id="sp-lang">
+      <option value="sv">🇸🇪 Svenska</option>
+      <option value="en">🇬🇧 English</option>
+    </select>
+  </div>
+
+  <div class="sp-section">
+    <label data-i18n="sp.telnet.label">HamAlert Telnet Login</label>
+    <input id="sp-user" type="text"     autocomplete="off" placeholder="Username">
+    <input id="sp-pass" type="password" autocomplete="off" placeholder="Telnet password">
+    <p class="sp-hint" data-i18n="sp.telnet.hint">Use your separate Telnet password (not your regular HamAlert password).</p>
+  </div>
+
+  <div class="sp-section">
+    <label data-i18n="sp.history.label">Spot History</label>
+    <select id="sp-maxhours">
+      <option value="1">1 hour</option>
+      <option value="2" selected>2 hours</option>
+      <option value="4">4 hours</option>
+      <option value="6">6 hours</option>
+      <option value="8">8 hours</option>
+    </select>
+    <p class="sp-hint" data-i18n="sp.history.hint">Spots older than this are removed from the list.</p>
+  </div>
+
+  <div class="sp-section">
+    <label data-i18n="sp.qrz.label">QRZ Callsign Lookup</label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <input id="sp-qrz-enable" type="checkbox" style="width:auto;margin:0">
+      <span style="font-size:12px;color:var(--text)" data-i18n="sp.qrz.enable">Enable QRZ XML lookup</span>
+    </div>
+    <input id="sp-qrz-user" type="text"     autocomplete="off" placeholder="QRZ Username">
+    <input id="sp-qrz-pass" type="password" autocomplete="off" placeholder="QRZ Password">
+    <label style="margin-top:4px" data-i18n="sp.qrz.ttl">Cache TTL</label>
+    <select id="sp-qrz-ttl">
+      <option value="7">7 days</option>
+      <option value="14">14 days</option>
+      <option value="30" selected>30 days</option>
+      <option value="60">60 days</option>
+      <option value="90">90 days</option>
+    </select>
+    <div id="sp-qrz-status" style="font-size:11px;margin-top:4px;color:var(--text-dim)">Not connected</div>
+    <p class="sp-hint" data-i18n="sp.qrz.hint">Requires QRZ XML subscription. Provides exact position per callsign.</p>
+  </div>
+
+  <div class="sp-section">
+    <button id="btn-sp-reconnect" data-i18n="sp.reconnect">Save &amp; Reconnect</button>
+  </div>
+
+  <!-- Visas bara i Tauri-läge (döljs annars via JS) -->
+  <div class="sp-section" id="sp-update-section" style="display:none">
+    <label data-i18n="sp.version">App Version</label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span id="sp-version" style="font-size:12px;font-family:var(--font-call);color:var(--text)">v0.1.0</span>
+      <button id="btn-check-update" data-i18n="sp.check" style="font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);color:var(--accent);cursor:pointer;">Check for updates</button>
+    </div>
+    <div id="sp-update-status" style="font-size:11px;color:var(--text-dim)"></div>
+    <button id="btn-install-update" data-i18n="sp.install" style="display:none;width:100%;margin-top:8px;background:#27ae60;border:none;border-radius:6px;color:#fff;padding:8px;font-size:12px;cursor:pointer;">
+      Download &amp; Install update
+    </button>
+  </div>
+
+  <div class="sp-section" style="border-top:1px solid var(--border);padding-top:14px;text-align:center">
+    <div style="font-size:11px;color:var(--text-dim);font-family:var(--font-call);letter-spacing:.07em;line-height:1.9;opacity:.7">
+      HamAlert DX Receiver<br>
+      <span style="font-size:13px">73 de SA0LEK</span>
+    </div>
+  </div>
+</div>
+
 
 <!-- Leaflet.js – öppen kartklient för Leaflet-kartan -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ══════════════════════════════════════════════════════════
+//  i18n – Flerspråksstöd (en / sv)
+//
+//  t(key)       → returnerar sträng för aktuellt språk
+//  applyLang()  → uppdaterar alla [data-i18n]-element i DOM
+//  setLang(l)   → byter språk och sparar i localStorage
+// ══════════════════════════════════════════════════════════
+const STRINGS = {
+  en: {
+    // Header
+    'hdr.call': 'Call', 'hdr.locator': 'Locator', 'hdr.save': 'Save',
+    'hdr.dark': '🌙 Dark', 'hdr.light': '☀️ Light',
+    'hdr.audio.off': '🔇 Audio', 'hdr.audio.on': '🔔 Audio',
+    'hdr.status': 'Connecting…',
+    'detail.empty': 'Click a spot to see details',
+    'spots.today': n => `${n.toLocaleString()} spots today`,
+    // Detail labels
+    'd.freq': 'Freq / Band', 'd.mode': 'Mode', 'd.entity': 'Entity',
+    'd.grid': 'Grid', 'd.cq': 'CQ Zone', 'd.spotter': 'Spotter',
+    'd.comment': 'Comment', 'd.dist': 'Distance', 'd.bearing': 'Bearing',
+    'd.source': 'Source',
+    // Settings
+    'sp.title': '⚙️ Settings',
+    'sp.telnet.label': 'HamAlert Telnet Login',
+    'sp.telnet.hint': 'Use your separate Telnet password (not your regular HamAlert password).',
+    'sp.history.label': 'Spot History',
+    'sp.history.hint': 'Spots older than this are removed from the list.',
+    'sp.qrz.label': 'QRZ Callsign Lookup',
+    'sp.qrz.enable': 'Enable QRZ XML lookup',
+    'sp.qrz.ttl': 'Cache TTL',
+    'sp.qrz.hint': 'Requires QRZ XML subscription. Provides exact position per callsign. Cache TTL controls how long a callsign is stored before being re-fetched.',
+    'sp.reconnect': 'Save & Reconnect',
+    'sp.version': 'App Version',
+    'sp.check': 'Check for updates',
+    'sp.install': 'Download & Install update',
+    'sp.lang.label': 'Language',
+    // Wizard
+    'wz.subtitle': 'Setup Wizard',
+    'wz.next': 'Next →', 'wz.back': '← Back', 'wz.connect': '✓ Connect',
+    'wz1.title': 'Welcome!',
+    'wz1.p1': 'HamAlert DX Receiver shows real-time DX spots on a map. You need a free <strong>HamAlert account</strong> to receive spots.',
+    'wz1.p2': "Don't have an account yet? Register here:",
+    'wz1.link': '→ Create account at hamalert.org',
+    'wz1.hint': 'Already have an account? Just click Next.',
+    'wz2.title': 'Set Up a Trigger',
+    'wz2.p1': 'A <strong>trigger</strong> in HamAlert tells the system which spots to send you — by band, mode, entity, callsign prefix, etc.',
+    'wz2.p2': 'Without a trigger you will receive no spots at all. Create at least one:',
+    'wz2.link': '→ Open hamalert.org/triggers',
+    'wz2.hint': 'Create a trigger and come back here.',
+    'wz3.title': 'Find Your Telnet Password',
+    'wz3.p1': 'HamAlert uses a <strong>separate Telnet password</strong> — not your regular login password.',
+    'wz3.li1': 'Log in to hamalert.org',
+    'wz3.li2': 'Go to <strong>My Account → Telnet</strong>',
+    'wz3.li3': 'Copy your Telnet password',
+    'wz3.link': '→ Open hamalert.org/account',
+    'wz4.title': 'Your Station',
+    'wz4.p1': 'Enter your callsign and Maidenhead locator to show your position on the map and calculate bearing/distance to DX stations.',
+    'wz4.call': 'Your Callsign',
+    'wz4.loc': 'Your Locator (4 or 6 chars)',
+    'wz5.title': 'Connect to HamAlert',
+    'wz5.p1': 'Enter your HamAlert username and the Telnet password from the previous step.',
+    'wz5.user': 'HamAlert Username',
+    'wz5.pass': 'Telnet Password',
+    'wz5.hint': 'Found under Account → Telnet on hamalert.org — not your regular password.',
+  },
+  sv: {
+    // Header
+    'hdr.call': 'Call', 'hdr.locator': 'Locator', 'hdr.save': 'Spara',
+    'hdr.dark': '🌙 Mörkt', 'hdr.light': '☀️ Ljust',
+    'hdr.audio.off': '🔇 Ljud', 'hdr.audio.on': '🔔 Ljud',
+    'hdr.status': 'Ansluter…',
+    'detail.empty': 'Klicka på en spot för detaljer',
+    'spots.today': n => `${n.toLocaleString()} spots idag`,
+    // Detail labels
+    'd.freq': 'Freq / Band', 'd.mode': 'Mode', 'd.entity': 'Entitet',
+    'd.grid': 'Grid', 'd.cq': 'CQ-zon', 'd.spotter': 'Spotter',
+    'd.comment': 'Kommentar', 'd.dist': 'Avstånd', 'd.bearing': 'Bäring',
+    'd.source': 'Källa',
+    // Settings
+    'sp.title': '⚙️ Inställningar',
+    'sp.telnet.label': 'HamAlert Telnet-login',
+    'sp.telnet.hint': 'Använd ditt separata Telnet-lösenord (ej ditt vanliga HamAlert-lösenord).',
+    'sp.history.label': 'Spothistorik',
+    'sp.history.hint': 'Spots äldre än detta tas bort från listan och bufferten.',
+    'sp.qrz.label': 'QRZ Callsign-uppslag',
+    'sp.qrz.enable': 'Aktivera QRZ XML-uppslag',
+    'sp.qrz.ttl': 'Cache-TTL',
+    'sp.qrz.hint': 'Kräver QRZ XML-prenumeration. Ger exakt position per callsign. Cache-TTL styr hur länge ett callsign sparas på disk innan det slås upp igen.',
+    'sp.reconnect': 'Spara & Återanslut',
+    'sp.version': 'Appversion',
+    'sp.check': 'Sök uppdateringar',
+    'sp.install': 'Ladda ner & installera uppdatering',
+    'sp.lang.label': 'Språk',
+    // Wizard
+    'wz.subtitle': 'Installationsguide',
+    'wz.next': 'Nästa →', 'wz.back': '← Tillbaka', 'wz.connect': '✓ Anslut',
+    'wz1.title': 'Välkommen!',
+    'wz1.p1': 'HamAlert DX Receiver visar DX-spots i realtid på en karta. Du behöver ett gratis <strong>HamAlert-konto</strong> för att ta emot spots.',
+    'wz1.p2': 'Har du inget konto ännu? Registrera dig här:',
+    'wz1.link': '→ Skapa konto på hamalert.org',
+    'wz1.hint': 'Har du redan ett konto? Klicka bara Nästa.',
+    'wz2.title': 'Sätt upp ett Trigger',
+    'wz2.p1': 'Ett <strong>trigger</strong> i HamAlert talar om vilka spots du vill ha — band, mode, entitet, callsign-prefix m.m.',
+    'wz2.p2': 'Utan ett trigger får du inga spots alls. Skapa minst ett:',
+    'wz2.link': '→ Öppna hamalert.org/triggers',
+    'wz2.hint': 'Skapa ett trigger och kom sedan tillbaka hit.',
+    'wz3.title': 'Hitta ditt Telnet-lösenord',
+    'wz3.p1': 'HamAlert använder ett <strong>separat Telnet-lösenord</strong> — inte ditt vanliga inloggningslösenord.',
+    'wz3.li1': 'Logga in på hamalert.org',
+    'wz3.li2': 'Gå till <strong>My Account → Telnet</strong>',
+    'wz3.li3': 'Kopiera ditt Telnet-lösenord',
+    'wz3.link': '→ Öppna hamalert.org/account',
+    'wz4.title': 'Din Station',
+    'wz4.p1': 'Ange ditt callsign och Maidenhead-locator för att visa din position på kartan och beräkna bäring/avstånd till DX-stationer.',
+    'wz4.call': 'Ditt Callsign',
+    'wz4.loc': 'Din Locator (4 eller 6 tecken)',
+    'wz5.title': 'Anslut till HamAlert',
+    'wz5.p1': 'Ange ditt HamAlert-användarnamn och Telnet-lösenordet från föregående steg.',
+    'wz5.user': 'HamAlert Username',
+    'wz5.pass': 'Telnet-lösenord',
+    'wz5.hint': 'Hittas under Account → Telnet på hamalert.org — inte ditt vanliga lösenord.',
+  },
+};
+
+let currentLang = localStorage.getItem('ha_lang') || 'sv';
+
+/** Returnerar översatt sträng. Faller tillbaka på engelska om nyckeln saknas. */
+function t(key) {
+  const lang = STRINGS[currentLang] || STRINGS.en;
+  return lang[key] ?? STRINGS.en[key] ?? key;
+}
+
+/** Uppdaterar alla [data-i18n] och [data-i18n-html]-element i DOM. */
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+}
+
+/** Byter språk, sparar och tillämpar. */
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('ha_lang', lang);
+  applyLang();
+  // Uppdatera tema-knapp och audio-knapp direkt
+  const themeBtn = document.getElementById('btn-theme');
+  if (themeBtn) {
+    const darkMode = document.documentElement.classList.contains('dark');
+    themeBtn.textContent = darkMode ? t('hdr.light') : t('hdr.dark');
+  }
+  const audioBtn = document.getElementById('btn-audio');
+  if (audioBtn && typeof audioOn !== 'undefined') {
+    audioBtn.textContent = audioOn ? t('hdr.audio.on') : t('hdr.audio.off');
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 //  DXCC-lookup: DXCC-entitetsnamn → ungefärlig [lat, lon]
 //
@@ -649,6 +1062,7 @@ let homeLatLon   = null;    // Hemstationens [lat, lon] (null tills locator spar
 let homeCallsign = '';      // Hemstationens callsign
 let audioOn      = false;   // Audio-notiser på/av
 let selectedId   = null;    // Vald spots ID (för detaljraden)
+let beamLine     = null;    // Leaflet-linje från hemQTH till vald DX-spot
 let audioCtx     = null;    // Web Audio API-kontext (lazy-init)
 
 // Aktiva band i filtret – alla aktiva vid start
@@ -679,14 +1093,46 @@ const TILES = {
 };
 TILES.light.addTo(map); // Ljust tema är standard
 
+// Klick på tom kartyta avmarkerar spot och tar bort beam-linjen
+map.on('click', () => {
+  if (beamLine) { beamLine.remove(); beamLine = null; }
+  selectedId = null;
+  document.querySelectorAll('#spot-tbody tr').forEach(r => r.classList.remove('selected'));
+  document.getElementById('detail').innerHTML = '<span id="detail-empty">Click a spot to see details</span>';
+});
+
 /**
  * Lägger till en cirkelmarkör på kartan för en spot.
  * Markören tas bort automatiskt efter 30 minuter.
  *
  * @param {object} spot  Spot-objekt
  */
+/**
+ * Returnerar bästa tillgängliga position för en spot.
+ * Prioritet: Maidenhead-grid → DXCC-tabell → kontinentcentrum
+ */
+function spotPos(spot) {
+  if (spot.grid && spot.grid.length >= 4) return maidenhead(spot.grid);
+  return dxccPos(spot.entity, spot.continent);
+}
+
+/**
+ * Bygger tooltip-HTML för en kartmarkör.
+ * qrz = { grid, name, image } eller null om QRZ-data saknas.
+ */
+function buildTooltip(spot, qrz) {
+  const bc    = BAND_COLOR[spot.band] || '#888';
+  const grid  = (qrz && qrz.grid) ? qrz.grid : spot.grid;
+  const gridStr = grid ? ` · <span style="opacity:.8">${grid}</span>` : '';
+  const nameStr = (qrz && qrz.name)
+    ? `<br><span style="font-size:11px;opacity:.75">${qrz.name}</span>` : '';
+  const imgStr  = (qrz && qrz.image)
+    ? `<br><img src="${qrz.image}" style="width:64px;border-radius:4px;margin-top:5px;display:block">` : '';
+  return `<b style="color:${bc}">${spot.fullCallsign}</b>${nameStr}<br>${spot.frequency} MHz ${spot.band} ${spot.mode}<br>${spot.entity || spot.continent || ''}${gridStr}${imgStr}`;
+}
+
 function addMarker(spot) {
-  const pos = dxccPos(spot.entity, spot.continent);
+  const pos = spotPos(spot);
   if (!pos) return;
   const color = BAND_COLOR[spot.band] || '#888';
   const marker = L.circleMarker(pos, {
@@ -694,10 +1140,9 @@ function addMarker(spot) {
     fillOpacity: 0.7, weight: 1.5, opacity: 0.9,
   }).addTo(map);
 
-  // Tooltip: visas vid hover (ej klick, för att inte störa table-interaktion)
-  const label = `<b>${spot.fullCallsign}</b><br>${spot.frequency} MHz ${spot.band} ${spot.mode}<br>${spot.entity || spot.continent || ''}`;
-  marker.bindTooltip(label, { direction: 'top', offset: [0, -6] });
-  marker.on('click', () => selectSpot(spot.id));
+  // Tooltip: visas vid hover – byggs med buildTooltip (uppdateras av QRZ)
+  marker.bindTooltip(buildTooltip(spot, null), { direction: 'top', offset: [0, -6] });
+  marker.on('click', (e) => { L.DomEvent.stopPropagation(e); selectSpot(spot.id); });
   markers.set(spot.id, marker);
 
   // Auto-borttagning efter 30 minuter (matchar standard åldersfilter)
@@ -803,7 +1248,7 @@ function colorCell(band) {
 function makeRow(spot, isNew) {
   // Beräkna avstånd/bäring om hemlocator är satt och entitet är känd
   const geo = (homeLatLon && spot.entity)
-    ? geoCalc(homeLatLon[0], homeLatLon[1], ...dxccPos(spot.entity, spot.continent))
+    ? geoCalc(homeLatLon[0], homeLatLon[1], ...spotPos(spot))
     : null;
 
   // Bygg kommentartext från alla relevanta fält
@@ -831,7 +1276,7 @@ function makeRow(spot, isNew) {
   // rad-klick (selectSpot) när man klickar på QRZ-knappen
   tr.innerHTML = `
     <td class="td-time"   >${spot.time || spot.receivedAt.slice(11,16)}</td>
-    <td class="td-qrz"   ><a href="${qrzUrl(spot.callsign||spot.fullCallsign)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">QRZ</a></td>
+    <td class="td-qrz"   ><a href="#" onclick="event.preventDefault();event.stopPropagation();openQrz('${spot.callsign||spot.fullCallsign}')">QRZ</a></td>
     <td class="td-call"   style="color:${bc}">${esc(spot.fullCallsign)}</td>
     <td class="td-freq"   style="color:${bc}">${freq}</td>
     <td class="td-band"   style="color:${bc}">${esc(spot.band)}</td>
@@ -909,9 +1354,18 @@ function selectSpot(id) {
   const m = markers.get(id);
   if (m) { map.panTo(m.getLatLng()); m.openTooltip(); }
 
+  // Rita beam-linje från hemQTH till DX-spot
+  if (beamLine) { beamLine.remove(); beamLine = null; }
+  if (homeLatLon && m) {
+    const bc = BAND_COLOR[spot.band] || '#888';
+    beamLine = L.polyline([homeLatLon, m.getLatLng()], {
+      color: bc, weight: 1.5, opacity: 0.7, dashArray: '6 5',
+    }).addTo(map);
+  }
+
   // Beräkna avstånd/bäring till hemstation
   const geo = (homeLatLon && spot.entity)
-    ? geoCalc(homeLatLon[0], homeLatLon[1], ...dxccPos(spot.entity, spot.continent))
+    ? geoCalc(homeLatLon[0], homeLatLon[1], ...spotPos(spot))
     : null;
 
   // Bygg extra-block för aktivitetsreferenser (SOTA, WWFF, POTA, IOTA)
@@ -924,19 +1378,23 @@ function selectSpot(id) {
   if (spot.speed)        extras.push(`<div class="d-group"><span class="d-label">Speed</span><span class="d-val">${esc(spot.speed)} WPM</span></div>`);
   if (spot.qsl)          extras.push(`<div class="d-group"><span class="d-label">QSL</span><span class="d-val">${esc(spot.qsl)}</span></div>`);
 
-  const bc = BAND_COLOR[spot.band] || '#888';
+  const bc  = BAND_COLOR[spot.band] || '#888';
+  const qrz = spot._qrz || qrzCache.get(spot.callsign);
   document.getElementById('detail').innerHTML = `
+    ${qrz && qrz.image ? `<img src="${qrz.image}" style="float:right;width:64px;border-radius:6px;margin:0 0 6px 10px;border:1px solid var(--border)">` : ''}
     <span class="d-call" style="color:${bc}">${esc(spot.fullCallsign)}</span>
-    <a href="${qrzUrl(spot.callsign || spot.fullCallsign)}" target="_blank" rel="noopener"
+    ${qrz && qrz.name ? `<span style="font-size:12px;color:var(--text-dim);margin-left:6px">${esc(qrz.name)}</span>` : ''}
+    <a href="#" onclick="event.preventDefault();openQrz('${spot.callsign || spot.fullCallsign}')"
        style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;color:var(--accent);text-decoration:none;white-space:nowrap;">QRZ ↗</a>
-    <div class="d-group"><span class="d-label">Freq / Band</span><span class="d-val">${spot.frequency} MHz · ${esc(spot.band)}</span></div>
-    <div class="d-group"><span class="d-label">Mode</span><span class="d-val">${esc(spot.modeDetail||spot.mode)}</span></div>
-    <div class="d-group"><span class="d-label">Entity</span><span class="d-val">${esc(spot.entity||'—')} (${esc(spot.continent||'?')})</span></div>
-    <div class="d-group"><span class="d-label">CQ Zone</span><span class="d-val">${esc(spot.cq||'—')}</span></div>
-    <div class="d-group"><span class="d-label">Spotter</span><span class="d-val">${esc(spot.spotter)} ${spot.spotterEntity ? '('+esc(spot.spotterEntity)+')' : ''}</span></div>
-    ${spot.comment ? `<div class="d-group"><span class="d-label">Comment</span><span class="d-val">${esc(spot.comment)}</span></div>` : ''}
-    ${geo ? `<div class="d-group"><span class="d-label">Distance</span><span class="d-val">${geo.distKm.toLocaleString()} km</span></div><div class="d-group"><span class="d-label">Bearing</span><span class="d-val">${geo.bearing}°</span></div>` : ''}
-    ${spot.source ? `<div class="d-group"><span class="d-label">Source</span><span class="d-val">${esc(spot.source)}</span></div>` : ''}
+    <div class="d-group"><span class="d-label">${t('d.freq')}</span><span class="d-val">${spot.frequency} MHz · ${esc(spot.band)}</span></div>
+    <div class="d-group"><span class="d-label">${t('d.mode')}</span><span class="d-val">${esc(spot.modeDetail||spot.mode)}</span></div>
+    <div class="d-group"><span class="d-label">${t('d.entity')}</span><span class="d-val">${esc(spot.entity||'—')} (${esc(spot.continent||'?')})</span></div>
+    ${spot.grid ? `<div class="d-group"><span class="d-label">${t('d.grid')}</span><span class="d-val">${esc(spot.grid)}</span></div>` : ''}
+    <div class="d-group"><span class="d-label">${t('d.cq')}</span><span class="d-val">${esc(spot.cq||'—')}</span></div>
+    <div class="d-group"><span class="d-label">${t('d.spotter')}</span><span class="d-val">${esc(spot.spotter)} ${spot.spotterEntity ? '('+esc(spot.spotterEntity)+')' : ''}</span></div>
+    ${spot.comment ? `<div class="d-group"><span class="d-label">${t('d.comment')}</span><span class="d-val">${esc(spot.comment)}</span></div>` : ''}
+    ${geo ? `<div class="d-group"><span class="d-label">${t('d.dist')}</span><span class="d-val">${geo.distKm.toLocaleString()} km</span></div><div class="d-group"><span class="d-label">${t('d.bearing')}</span><span class="d-val">${geo.bearing}°</span></div>` : ''}
+    ${spot.source ? `<div class="d-group"><span class="d-label">${t('d.source')}</span><span class="d-val">${esc(spot.source)}</span></div>` : ''}
     ${extras.join('')}
   `;
 }
@@ -951,6 +1409,31 @@ function selectSpot(id) {
  */
 function qrzUrl(callsign) {
   return `https://www.qrz.com/db/${encodeURIComponent(callsign.replace(/\//g, ''))}`;
+}
+
+/**
+ * Öppnar QRZ-sidan för ett callsign.
+ * I Tauri-läge: eget litet WebviewWindow (stannar i appen).
+ * I webbläsarläge: vanlig ny flik.
+ */
+function openQrz(callsign) {
+  const url = qrzUrl(callsign);
+  if (window.__TAURI__) {
+    const { WebviewWindow } = window.__TAURI__.webviewWindow;
+    // Etiketten måste vara unik och får bara innehålla a-z, 0-9 och bindestreck
+    const label = 'qrz-' + callsign.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const win = new WebviewWindow(label, {
+      url,
+      title: `QRZ – ${callsign}`,
+      width: 980,
+      height: 740,
+      center: true,
+      resizable: true,
+    });
+    win.once('tauri://error', e => console.error('QRZ window error', e));
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
 }
 
 // ── QRZ XML API-stub ─────────────────────────────────────
@@ -974,6 +1457,136 @@ function qrzUrl(callsign) {
 // }
 
 // ══════════════════════════════════════════════════════════
+//  QRZ XML Lookup
+//  Slår upp callsign mot QRZ för att få exakt lat/lon/grid.
+//  Kräver Tauri-miljö + QRZ XML-prenumeration.
+// ══════════════════════════════════════════════════════════
+let qrzSession   = null;         // Aktiv QRZ session key
+let qrzCache     = new Map();    // callsign → { lat, lon, grid, name, cachedAt }
+let qrzQueue     = [];           // Väntande uppslag
+let qrzActive    = 0;           // Antal pågående uppslag
+let qrzSaveTimer = null;        // Debounce-timer för disk-spara
+const QRZ_CONCURRENCY = 2;      // Max parallella uppslag
+// TTL läses från localStorage så den är konfigurerbar utan omstart
+function qrzTtlDays() { return parseInt(localStorage.getItem('ha_qrz_ttl') || '30', 10); }
+
+function qrzEnabled() {
+  return window.__TAURI__
+    && localStorage.getItem('ha_qrz_enabled') === 'true'
+    && qrzSession;
+}
+
+/** Laddar QRZ-cache från disk och filtrerar bort poster äldre än TTL. */
+async function qrzCacheLoad() {
+  if (!window.__TAURI__) return;
+  try {
+    const json = await window.__TAURI__.core.invoke('load_qrz_cache');
+    const obj  = JSON.parse(json);
+    const cutoff = Date.now() - qrzTtlDays() * 86400_000;
+    let loaded = 0;
+    for (const [call, info] of Object.entries(obj)) {
+      if ((info.cachedAt || 0) > cutoff) { qrzCache.set(call, info); loaded++; }
+    }
+    if (loaded > 0) console.log(`QRZ: loaded ${loaded} cached callsigns from disk`);
+  } catch (_) { /* fil saknas vid första körningen */ }
+}
+
+/** Sparar hela cachen till disk (debounced, max 1 gång/3s). */
+function qrzCacheSave() {
+  if (!window.__TAURI__) return;
+  clearTimeout(qrzSaveTimer);
+  qrzSaveTimer = setTimeout(() => {
+    const obj = {};
+    for (const [call, info] of qrzCache) obj[call] = info;
+    window.__TAURI__.core.invoke('save_qrz_cache', { data: JSON.stringify(obj) })
+      .catch(() => {});
+  }, 3000);
+}
+
+/** Loggar in mot QRZ, sparar session key. */
+async function qrzLogin() {
+  const user = localStorage.getItem('ha_qrz_user') || '';
+  const pass = localStorage.getItem('ha_qrz_pass') || '';
+  if (!user || !pass) return;
+
+  const el = document.getElementById('sp-qrz-status');
+  if (el) el.textContent = 'Connecting…';
+  try {
+    let key;
+    if (window.__TAURI__) {
+      key = await window.__TAURI__.core.invoke('qrz_login', { username: user, password: pass });
+    } else {
+      const r = await fetch(`/qrz/login?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`);
+      const j = await r.json();
+      if (!r.ok || j.error) throw new Error(j.error || 'Login failed');
+      key = j.key;
+    }
+    qrzSession = key;
+    if (el) { el.textContent = '● Session active'; el.style.color = '#00cc44'; }
+  } catch (e) {
+    qrzSession = null;
+    if (el) { el.textContent = `✗ ${e}`; el.style.color = '#ff4444'; }
+  }
+}
+
+/** Köar ett callsign-uppslag. Anropas för varje ny spot. */
+function qrzEnqueue(spot) {
+  if (!qrzEnabled()) return;
+  const base = spot.callsign || spot.fullCallsign;
+  if (!base || qrzCache.has(base)) {
+    // Redan cachat – uppdatera markören direkt
+    if (qrzCache.has(base)) applyQrzToSpot(spot, qrzCache.get(base));
+    return;
+  }
+  qrzQueue.push(spot);
+  qrzDrain();
+}
+
+/** Processerar kön med max QRZ_CONCURRENCY parallella anrop. */
+function qrzDrain() {
+  while (qrzActive < QRZ_CONCURRENCY && qrzQueue.length > 0) {
+    const spot = qrzQueue.shift();
+    const base = spot.callsign || spot.fullCallsign;
+    if (qrzCache.has(base)) { applyQrzToSpot(spot, qrzCache.get(base)); continue; }
+    qrzActive++;
+    const lookupPromise = window.__TAURI__
+      ? window.__TAURI__.core.invoke('qrz_lookup', { session: qrzSession, callsign: base })
+      : fetch(`/qrz/lookup?session=${encodeURIComponent(qrzSession)}&callsign=${encodeURIComponent(base)}`)
+          .then(r => r.json())
+          .then(j => { if (j.error) throw j.error; return j; });
+
+    lookupPromise
+      .then(info => {
+        info.cachedAt = Date.now();   // Timestamp för TTL
+        qrzCache.set(base, info);
+        qrzCacheSave();               // Spara till disk (debounced)
+        applyQrzToSpot(spot, info);
+      })
+      .catch(err => {
+        if (err === 'SESSION_EXPIRED') { qrzSession = null; qrzLogin(); }
+        // Callsign ej hittat – ignorera tyst
+      })
+      .finally(() => { qrzActive--; qrzDrain(); });
+  }
+}
+
+/** Uppdaterar kartmarkör och spot-objektet med QRZ-data. */
+function applyQrzToSpot(spot, info) {
+  if (!info || (!info.lat && !info.lon)) return;
+  // Uppdatera spot-objektet med exakt position och QRZ-metadata
+  spot.grid = info.grid || spot.grid;
+  spot._qrz = info; // cachas på spot-objektet för detaljpanelen
+  // Flytta Leaflet-markören och uppdatera tooltip med QRZ-data
+  const marker = markers.get(spot.id);
+  if (marker) {
+    marker.setLatLng([info.lat, info.lon]);
+    marker.setTooltipContent(buildTooltip(spot, info));
+  }
+  // Uppdatera detaljpanelen om denna spot visas just nu
+  if (selectedId === spot.id) selectSpot(spot.id);
+}
+
+// ══════════════════════════════════════════════════════════
 //  UTC-klocka (uppdateras varje sekund)
 // ══════════════════════════════════════════════════════════
 setInterval(() => {
@@ -983,11 +1596,11 @@ setInterval(() => {
 }, 1000);
 
 // ══════════════════════════════════════════════════════════
-//  WebSocket
+//  Anslutning – WebSocket (webbläsare) eller Tauri events (desktop)
 //
-//  Ansluter till ws(s)://hamserver.local:<port>/ws.
-//  Protokoll (ws/wss) väljs automatiskt baserat på HTTP/HTTPS.
-//  Automatisk återanslutning med 5 sekunders fördröjning.
+//  window.__TAURI__ finns bara när appen körs som Tauri-app.
+//  I webbläsaren används vanlig WebSocket mot Node.js-servern.
+//  I Tauri används Tauri events från Rust-backendet.
 // ══════════════════════════════════════════════════════════
 function setStatus(ok, text) {
   document.getElementById('status-dot').className = ok ? 'ok' : 'err';
@@ -998,9 +1611,132 @@ function updateCount(n) {
   document.getElementById('spots-count').textContent = `${n.toLocaleString()} spots today`;
 }
 
+// ── Tauri-anslutning ──────────────────────────────────────
+//
+// Lyssnar på tre events från Rust-backendet:
+//   ha-init   → initial historik vid uppstart
+//   ha-spot   → ny spot i realtid
+//   ha-status → anslutningsstatus (connected: bool, text: string)
+async function connectTauri() {
+  const { listen } = window.__TAURI__.event;
+  const { invoke } = window.__TAURI__.core;
+
+  await listen('ha-init', event => {
+    const msg = event.payload;
+    spots = msg.spots || [];
+    rebuildTable();
+    spots.forEach(s => { addMarker(s); qrzEnqueue(s); });
+    updateCount(msg.spotsToday || 0);
+  });
+
+  await listen('ha-spot', event => {
+    const msg = event.payload;
+    // Dedup-guard: om spotet redan finns i listan (samma ID) hoppar vi över det
+    if (spots.some(s => s.id === msg.data.id)) return;
+    spots.unshift(msg.data);
+    if (spots.length > 500) spots.length = 500;
+    addMarker(msg.data);
+    qrzEnqueue(msg.data);   // Kör QRZ-uppslag för exakt position
+    prependRow(msg.data);
+    updateCount(msg.spotsToday);
+    ping();
+  });
+
+  await listen('ha-status', event => {
+    setStatus(event.payload.connected, event.payload.text);
+  });
+
+  // QRZ: ladda disk-cache, sedan logga in om aktiverat
+  await qrzCacheLoad();
+  if (localStorage.getItem('ha_qrz_enabled') === 'true') qrzLogin();
+
+  // Anslut om credentials finns (wizard hanterar fallet när de saknas)
+  const user = localStorage.getItem('ha_telnet_user');
+  const pass = localStorage.getItem('ha_telnet_pass');
+  const maxHours = parseInt(localStorage.getItem('ha_max_hours') || '2', 10);
+  if (user && pass) {
+    invoke('connect_hamalert', { username: user, password: pass, maxHours });
+  }
+  // Om credentials saknas visar wizard sig (initWizard körs i DOMContentLoaded)
+}
+
+// ── Hjälpfunktion: starta om Telnet-anslutning med sparade inställningar ──────
+function tauriReconnect() {
+  if (!window.__TAURI__) return;
+  const user     = localStorage.getItem('ha_telnet_user') || '';
+  const pass     = localStorage.getItem('ha_telnet_pass') || '';
+  const maxHours = parseInt(localStorage.getItem('ha_max_hours') || '2', 10);
+  if (!user || !pass) { return; } // Wizard hanterar saknade credentials
+  window.__TAURI__.core.invoke('connect_hamalert', { username: user, password: pass, maxHours });
+}
+
+// ── Auto-updater UI (Tauri-läge) ─────────────────────────
+function initUpdateUI() {
+  if (!window.__TAURI__) return;
+
+  // Visa update-sektionen i settings
+  document.getElementById('sp-update-section').style.display = '';
+
+  // Visa aktuell version (hämtas från Tauri)
+  window.__TAURI__.app.getVersion().then(v => {
+    document.getElementById('sp-version').textContent = 'v' + v;
+  }).catch(() => {});
+
+  let pendingUpdate = false;
+
+  document.getElementById('btn-check-update').addEventListener('click', async () => {
+    const statusEl = document.getElementById('sp-update-status');
+    const installBtn = document.getElementById('btn-install-update');
+    statusEl.textContent = 'Checking…';
+    installBtn.style.display = 'none';
+    pendingUpdate = false;
+    try {
+      const result = await window.__TAURI__.core.invoke('check_for_updates');
+      if (result.available) {
+        statusEl.textContent = `New version available: v${result.version}`;
+        statusEl.style.color = '#27ae60';
+        installBtn.style.display = '';
+        pendingUpdate = true;
+      } else {
+        statusEl.textContent = 'You are on the latest version.';
+        statusEl.style.color = 'var(--text-dim)';
+      }
+    } catch (e) {
+      const msg = String(e);
+      // Vanliga icke-kritiska fall – visa vänligt meddelande
+      if (msg.includes('fetch') || msg.includes('release JSON') || msg.includes('remote')) {
+        statusEl.textContent = 'You are on the latest version.';
+        statusEl.style.color = 'var(--text-dim)';
+      } else {
+        statusEl.textContent = 'Could not check for updates.';
+        statusEl.style.color = '#e74c3c';
+      }
+    }
+  });
+
+  document.getElementById('btn-install-update').addEventListener('click', async () => {
+    if (!pendingUpdate) return;
+    const statusEl = document.getElementById('sp-update-status');
+    const installBtn = document.getElementById('btn-install-update');
+    installBtn.disabled = true;
+    installBtn.textContent = 'Downloading…';
+    statusEl.textContent = 'Downloading and installing update…';
+    try {
+      await window.__TAURI__.core.invoke('install_update');
+      // install_update startar om appen automatiskt
+    } catch (e) {
+      statusEl.textContent = 'Install failed: ' + e;
+      statusEl.style.color = '#e74c3c';
+      installBtn.disabled = false;
+      installBtn.textContent = 'Download & Install update';
+    }
+  });
+}
+
+// ── WebSocket-anslutning (webbläsarläge) ─────────────────
 let ws, reconnectTimer;
 
-function connect() {
+function connectWS() {
   clearTimeout(reconnectTimer);
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
@@ -1009,30 +1745,35 @@ function connect() {
 
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
-
     if (msg.type === 'init') {
-      // Initial historik vid anslutning: ersätt hela spots-arrayen
       spots = msg.spots;
       rebuildTable();
       msg.spots.forEach(s => addMarker(s));
       updateCount(msg.spotsToday);
-
     } else if (msg.type === 'spot') {
-      // Ny spot: lägg till i minnet, kartan och tabellen
       spots.unshift(msg.data);
       if (spots.length > 500) spots.length = 500;
       addMarker(msg.data);
       prependRow(msg.data);
       updateCount(msg.spotsToday);
-      ping(); // Audio-notis om aktiverat
+      ping();
     }
   };
 
   ws.onclose = () => {
     setStatus(false, 'Disconnected — reconnecting…');
-    reconnectTimer = setTimeout(connect, 5000); // Försök igen om 5 s
+    reconnectTimer = setTimeout(connectWS, 5000);
   };
-  ws.onerror = () => ws.close(); // Låt onclose hantera återanslutning
+  ws.onerror = () => ws.close();
+}
+
+// Välj rätt anslutningsmetod beroende på miljö
+function connect() {
+  if (window.__TAURI__) {
+    connectTauri();
+  } else {
+    connectWS();
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1089,7 +1830,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyTheme() {
     document.documentElement.classList.toggle('dark', darkMode);
     const btn = document.getElementById('btn-theme');
-    btn.textContent = darkMode ? '☀️ Light' : '🌙 Dark';
+    btn.textContent = darkMode ? t('hdr.light') : t('hdr.dark');
     // Byt kartlager – remove() + addTo() utan att skapa nytt lager
     if (darkMode) { TILES.light.remove(); TILES.dark.addTo(map); }
     else           { TILES.dark.remove();  TILES.light.addTo(map); }
@@ -1106,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-audio').addEventListener('click', () => {
     audioOn = !audioOn;
     const btn = document.getElementById('btn-audio');
-    btn.textContent = audioOn ? '🔔 Audio' : '🔇 Audio';
+    btn.textContent = audioOn ? t('hdr.audio.on') : t('hdr.audio.off');
     btn.classList.toggle('on', audioOn);
     // Initiera AudioContext direkt vid aktivering (ej vid ping)
     if (audioOn && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1118,31 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('inp-call').addEventListener('keydown', e => e.key==='Enter' && saveSettings());
   document.getElementById('inp-loc' ).addEventListener('keydown', e => e.key==='Enter' && saveSettings());
 
-  // ── Setup-overlay ─────────────────────────────────
-  // Visas om callsign/locator saknas i localStorage (första besöket)
-  const savedCall = localStorage.getItem('ha_call');
-  const savedLoc  = localStorage.getItem('ha_loc');
-  if (savedCall && savedLoc) {
-    applySettings(savedCall, savedLoc);
-  } else {
-    document.getElementById('setup-overlay').style.display = 'flex';
-  }
-
-  // Default-knapp: fyller i testcallsign/locator (8S0HRA/JO99BH)
-  document.getElementById('btn-default').addEventListener('click', () => {
-    document.getElementById('setup-call').value = '8S0HRA';
-    document.getElementById('setup-loc').value  = 'JO99BH';
-  });
-
-  document.getElementById('btn-setup-save').addEventListener('click', () => {
-    const call = document.getElementById('setup-call').value.trim();
-    const loc  = document.getElementById('setup-loc').value.trim();
-    if (!call || !loc) return;
-    localStorage.setItem('ha_call', call);
-    localStorage.setItem('ha_loc',  loc);
-    applySettings(call, loc);
-    document.getElementById('setup-overlay').style.display = 'none';
-  });
+  // Setup-overlay ersatt av wizard – se initWizard() ovan.
 
   // ── Kolumnresize ──────────────────────────────────
   //
@@ -1291,8 +2008,262 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('ha_map_width', mapWrap.style.width);
   });
 
-  // Starta WebSocket-anslutningen
+  // ── Onboarding Wizard ─────────────────────────────────────────────────────
+  //
+  // Visas vid första uppstart om callsign ELLER HamAlert-credentials saknas.
+  // 5 steg: Skapa konto → Trigger → Telnet-lösenord → Din station → Login
+  // ─────────────────────────────────────────────────────────────────────────
+  (function initWizard() {
+    const TOTAL = 5;
+    let step = 1;
+
+    const wizardEl = document.getElementById('wizard');
+    const dots     = document.querySelectorAll('.wz-dot');
+    const btnBack  = document.getElementById('wz-back');
+    const btnNext  = document.getElementById('wz-next');
+
+    // Öppna externa länkar via Tauri WebviewWindow eller window.open
+    function wizOpen(url) {
+      if (window.__TAURI__) {
+        const { WebviewWindow } = window.__TAURI__.webviewWindow;
+        const label = 'ext-' + Date.now();
+        new WebviewWindow(label, { url, title: url, width: 1024, height: 760, center: true });
+      } else {
+        window.open(url, '_blank', 'noopener');
+      }
+    }
+
+    document.getElementById('wz-link-register').addEventListener('click', e => {
+      e.preventDefault(); wizOpen('https://hamalert.org/register');
+    });
+    document.getElementById('wz-link-triggers').addEventListener('click', e => {
+      e.preventDefault(); wizOpen('https://hamalert.org/triggers');
+    });
+    document.getElementById('wz-link-account').addEventListener('click', e => {
+      e.preventDefault(); wizOpen('https://hamalert.org/account');
+    });
+
+    // Wizard-texterna uppdateras vid varje showStep() och vid språkbyte
+    function applyWizardLang() {
+      document.getElementById('wizard-head-sub').textContent = t('wz.subtitle');
+      btnBack.textContent = t('wz.back');
+
+      const steps = [
+        { h: 'wz1.title', p: [['wz1.p1','html'],['wz1.p2','txt']], link: 'wz1.link', hint: 'wz1.hint', linkId: 'wz-link-register' },
+        { h: 'wz2.title', p: [['wz2.p1','html'],['wz2.p2','txt']], link: 'wz2.link', hint: 'wz2.hint', linkId: 'wz-link-triggers' },
+        { h: 'wz3.title', p: [['wz3.p1','html']], lis: ['wz3.li1','wz3.li2','wz3.li3'], link: 'wz3.link', linkId: 'wz-link-account' },
+        { h: 'wz4.title', p: [['wz4.p1','txt']], labels: ['wz4.call','wz4.loc'], labelIds: ['label-wz-call','label-wz-loc'] },
+        { h: 'wz5.title', p: [['wz5.p1','txt']], labels: ['wz5.user','wz5.pass'], labelIds: ['label-wz-user','label-wz-pass'], hint: 'wz5.hint' },
+      ];
+      steps.forEach((s, i) => {
+        const el = document.getElementById('wz-step-' + (i+1));
+        if (!el) return;
+        el.querySelector('h2').textContent = t(s.h);
+        const ps = el.querySelectorAll('p:not(.wz-hint)');
+        s.p.forEach((pk, pi) => {
+          if (ps[pi]) { if (pk[1]==='html') ps[pi].innerHTML = t(pk[0]); else ps[pi].textContent = t(pk[0]); }
+        });
+        if (s.link) { const a = document.getElementById(s.linkId); if (a) a.textContent = t(s.link); }
+        if (s.hint) { const h = el.querySelector('.wz-hint'); if (h) h.textContent = t(s.hint); }
+        if (s.lis) {
+          const lis = el.querySelectorAll('li');
+          s.lis.forEach((lk, li) => { if (lis[li]) lis[li].innerHTML = t(lk); });
+        }
+        if (s.labels) {
+          s.labels.forEach((lk, li) => {
+            const lel = document.getElementById(s.labelIds[li]);
+            if (lel) lel.textContent = t(lk);
+          });
+        }
+      });
+    }
+
+    function showStep(n) {
+      for (let i = 1; i <= TOTAL; i++) {
+        document.getElementById('wz-step-' + i).style.display = i === n ? '' : 'none';
+      }
+      dots.forEach((d, i) => d.classList.toggle('active', i < n));
+      btnBack.style.display = n === 1 ? 'none' : '';
+      btnNext.textContent = n === TOTAL ? t('wz.connect') : t('wz.next');
+      applyWizardLang();
+
+      // Sätt default-värden i station-steget
+      if (n === 4) {
+        const wc = document.getElementById('wz-call');
+        const wl = document.getElementById('wz-loc');
+        if (!wc.value) wc.value = localStorage.getItem('ha_call') || 'SA0LEK';
+        if (!wl.value) wl.value = localStorage.getItem('ha_loc')  || 'JO89XI';
+      }
+      // Sätt sparade credentials om de finns
+      if (n === 5) {
+        const wu = document.getElementById('wz-user');
+        const wp = document.getElementById('wz-pass');
+        if (!wu.value) wu.value = localStorage.getItem('ha_telnet_user') || '';
+        if (!wp.value && localStorage.getItem('ha_telnet_pass')) wp.value = '__UNCHANGED__';
+      }
+    }
+
+    btnBack.addEventListener('click', () => { if (step > 1) { step--; showStep(step); } });
+
+    btnNext.addEventListener('click', () => {
+      if (step === 4) {
+        // Validera station
+        const call = document.getElementById('wz-call').value.trim().toUpperCase();
+        const loc  = document.getElementById('wz-loc').value.trim().toUpperCase();
+        if (!call) { document.getElementById('wz-call').focus(); return; }
+        localStorage.setItem('ha_call', call);
+        localStorage.setItem('ha_loc',  loc || 'JO89XI');
+      }
+
+      if (step === TOTAL) {
+        // Sista steget: spara credentials och anslut
+        const user = document.getElementById('wz-user').value.trim();
+        const pass = document.getElementById('wz-pass').value.trim();
+        if (!user || !pass) {
+          document.getElementById(user ? 'wz-pass' : 'wz-user').focus();
+          return;
+        }
+        localStorage.setItem('ha_telnet_user', user);
+        if (pass !== '__UNCHANGED__') localStorage.setItem('ha_telnet_pass', pass);
+
+        // Applicera callsign/locator och stäng wizard
+        const call = localStorage.getItem('ha_call') || 'SA0LEK';
+        const loc  = localStorage.getItem('ha_loc')  || 'JO89XI';
+        applySettings(call, loc);
+        wizardEl.style.display = 'none';
+
+        // Anslut till HamAlert om vi är i Tauri
+        if (window.__TAURI__) {
+          const maxHours = parseInt(localStorage.getItem('ha_max_hours') || '2', 10);
+          const storedPass = localStorage.getItem('ha_telnet_pass') || '';
+          window.__TAURI__.core.invoke('connect_hamalert',
+            { username: user, password: storedPass, maxHours });
+        }
+        return;
+      }
+
+      step++;
+      showStep(step);
+    });
+
+    // Visa wizard om nödvändig data saknas.
+    // I Tauri krävs även HamAlert Telnet-credentials.
+    // I webbläsarläge räcker callsign/locator (WebSocket används).
+    const haCall  = localStorage.getItem('ha_call');
+    const haLoc   = localStorage.getItem('ha_loc');
+    const isTauri = !!window.__TAURI__;
+    const haUser  = localStorage.getItem('ha_telnet_user');
+    const haPass  = localStorage.getItem('ha_telnet_pass');
+    const needsCreds = isTauri && (!haUser || !haPass);
+
+    if (!haCall || !haLoc || needsCreds) {
+      if (haCall && haLoc && needsCreds) {
+        // Station OK men credentials saknas – hoppa direkt till steg 5
+        step = 5;
+      } else if (!isTauri && (!haCall || !haLoc)) {
+        // Webb: bara steg 4 (station) behövs
+        step = 4;
+      }
+      showStep(step);
+      wizardEl.style.display = 'flex';
+    } else {
+      applySettings(haCall, haLoc);
+    }
+  })();
+
+  // ── Settings sidopanel ────────────────────────────────
+  const settingsPanel = document.getElementById('settings-panel');
+
+  // Öppna/stäng panelen med ⚙️-knappen
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    const opening = !settingsPanel.classList.contains('open');
+    if (opening) {
+      // Fyll i aktuella värden från localStorage
+      document.getElementById('sp-user').value     = localStorage.getItem('ha_telnet_user') || '';
+      document.getElementById('sp-pass').value     = localStorage.getItem('ha_telnet_pass') ? '__UNCHANGED__' : '';
+      document.getElementById('sp-maxhours').value = localStorage.getItem('ha_max_hours') || '2';
+      // QRZ-fält
+      document.getElementById('sp-qrz-enable').checked = localStorage.getItem('ha_qrz_enabled') === 'true';
+      document.getElementById('sp-qrz-user').value     = localStorage.getItem('ha_qrz_user') || '';
+      document.getElementById('sp-qrz-pass').value     = localStorage.getItem('ha_qrz_pass') ? '__UNCHANGED__' : '';
+      document.getElementById('sp-qrz-ttl').value      = localStorage.getItem('ha_qrz_ttl') || '30';
+      // Visa aktuell sessionsstatus
+      const statusEl = document.getElementById('sp-qrz-status');
+      if (statusEl) {
+        if (qrzSession) { statusEl.textContent = '● Session active'; statusEl.style.color = '#00cc44'; }
+        else            { statusEl.textContent = 'Not connected';    statusEl.style.color = '';        }
+      }
+    }
+    settingsPanel.classList.toggle('open');
+  });
+
+  // Stäng panelen om man klickar utanför den
+  document.addEventListener('click', e => {
+    if (settingsPanel.classList.contains('open')
+        && !settingsPanel.contains(e.target)
+        && e.target.id !== 'btn-settings') {
+      settingsPanel.classList.remove('open');
+    }
+  });
+
+  // Save & Reconnect
+  document.getElementById('btn-sp-reconnect').addEventListener('click', () => {
+    const user     = document.getElementById('sp-user').value.trim();
+    const pass     = document.getElementById('sp-pass').value.trim();
+    const maxHours = parseInt(document.getElementById('sp-maxhours').value, 10);
+
+    if (!user) { document.getElementById('sp-user').focus(); return; }
+
+    // ── Spara Telnet-inställningar ──
+    localStorage.setItem('ha_max_hours', maxHours);
+    if (user) localStorage.setItem('ha_telnet_user', user);
+    if (pass && pass !== '__UNCHANGED__') localStorage.setItem('ha_telnet_pass', pass);
+
+    // ── Spara QRZ-inställningar ──
+    const qrzEnabled  = document.getElementById('sp-qrz-enable').checked;
+    const qrzUser     = document.getElementById('sp-qrz-user').value.trim();
+    const qrzPass     = document.getElementById('sp-qrz-pass').value.trim();
+    localStorage.setItem('ha_qrz_enabled', qrzEnabled);
+    if (qrzUser) localStorage.setItem('ha_qrz_user', qrzUser);
+    if (qrzPass && qrzPass !== '__UNCHANGED__') localStorage.setItem('ha_qrz_pass', qrzPass);
+    localStorage.setItem('ha_qrz_ttl', document.getElementById('sp-qrz-ttl').value);
+
+    // Logga in mot QRZ om aktiverat (eller om credentials ändrades)
+    if (qrzEnabled) {
+      qrzSession = null;   // tvinga ny login
+      qrzCache.clear();    // töm cache vid byte av konto
+      qrzLogin();
+    } else {
+      qrzSession = null;
+    }
+
+    settingsPanel.classList.remove('open');
+    tauriReconnect();
+  });
+
+  // Starta anslutning (WebSocket eller Tauri events beroende på miljö)
   connect();
+
+  // Initiera update-UI (bara synligt i Tauri-läge)
+  initUpdateUI();
+
+  // ── Språkväljare ──────────────────────────────────────────
+  const langSel = document.getElementById('sp-lang');
+  if (langSel) {
+    langSel.value = currentLang;
+    langSel.addEventListener('change', () => setLang(langSel.value));
+  }
+  // Tillämpa språk direkt vid start
+  applyLang();
+
+  // Cmd+Option+I (macOS) / Ctrl+Shift+I (Windows/Linux) öppnar DevTools
+  // Notera: e.code används istf e.key – Option-tangenten ändrar tecknet till 'î'
+  document.addEventListener('keydown', e => {
+    if (!window.__TAURI__) return;
+    const mac = e.metaKey && e.altKey && e.code === 'KeyI';
+    const win = e.ctrlKey && e.shiftKey && e.code === 'KeyI';
+    if (mac || win) window.__TAURI__.core.invoke('toggle_devtools');
+  });
 });
 </script>
 </body>

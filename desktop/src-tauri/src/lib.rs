@@ -550,6 +550,16 @@ async fn qrz_lookup(session: String, callsign: String) -> Result<QrzInfo, String
 
 // ── Uppdateringsstöd ───────────────────────────────────────────────────────────
 
+/// Öppnar/stänger WebView DevTools (kräver devtools-feature i Cargo.toml).
+#[tauri::command]
+fn toggle_devtools(window: tauri::WebviewWindow) {
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
+
 /// Kollar om en ny version finns tillgänglig.
 /// Returnerar { available: bool, version?: string, body?: string }
 #[tauri::command]
@@ -596,7 +606,16 @@ pub fn run() {
             save_qrz_cache,
             check_for_updates,
             install_update,
+            toggle_devtools,
         ])
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

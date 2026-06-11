@@ -13,6 +13,7 @@
 
 const express   = require('express');
 const http      = require('http');
+const https     = require('https');
 const WebSocket = require('ws');
 const path      = require('path');
 const fs        = require('fs');
@@ -263,6 +264,70 @@ app.get('/spots', (_req, res) => res.json({ spots: spots.slice(0, 200), spotsTod
 
 // Hälsokontroll – användbart för att verifiera att servern är uppe
 app.get('/health', (_req, res) => res.json({ ok: true, spotsToday, buffered: spots.length }));
+
+// ── QRZ XML API-proxy ──────────────────────────────────────────────────────────
+//
+// Webbläsaren kan inte anropa xmldata.qrz.com direkt pga CORS.
+// Servern proxar anropen och returnerar relevant data som JSON.
+//
+// GET /qrz/login?username=...&password=...
+//   → { key: "..." }  eller  { error: "..." }
+//
+// GET /qrz/lookup?session=...&callsign=...
+//   → { lat, lon, grid, name, image }  eller  { error: "..." }
+
+function qrzFetch(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'HamAlertReceiver/1.0' } }, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
+
+function xmlVal(xml, tag) {
+  const m = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
+  return m ? m[1].trim() : null;
+}
+
+app.get('/qrz/login', async (req, res) => {
+  const { username, password } = req.query;
+  if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
+  try {
+    const url = `https://xmldata.qrz.com/xml/current/?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&agent=HamAlertReceiver/1.0`;
+    const xml = await qrzFetch(url);
+    const key = xmlVal(xml, 'Key');
+    const err = xmlVal(xml, 'Error');
+    if (key) return res.json({ key });
+    return res.status(401).json({ error: err || 'Login failed' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/qrz/lookup', async (req, res) => {
+  const { session, callsign } = req.query;
+  if (!session || !callsign) return res.status(400).json({ error: 'Missing params' });
+  try {
+    const url = `https://xmldata.qrz.com/xml/current/?s=${encodeURIComponent(session)}&callsign=${encodeURIComponent(callsign)}`;
+    const xml = await qrzFetch(url);
+    if (xml.includes('Session Timeout') || xml.includes('Invalid session key')) {
+      return res.status(401).json({ error: 'SESSION_EXPIRED' });
+    }
+    const lat = parseFloat(xmlVal(xml, 'lat') || '0');
+    const lon = parseFloat(xmlVal(xml, 'lon') || '0');
+    if (!lat && !lon) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      lat, lon,
+      grid:  xmlVal(xml, 'grid')  || '',
+      name:  xmlVal(xml, 'name')  || '',
+      image: xmlVal(xml, 'image') || '',
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── WebSocket-hantering ────────────────────────────────────────────────────────
 wss.on('connection', ws => {
