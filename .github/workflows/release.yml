@@ -99,6 +99,9 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: HamAlert DX Receiver ${{ github.ref_name }}
           releaseBody: |
+            ## Vad är nytt
+            Se [commits](https://github.com/mrspock64/hamalert-receiver/commits/${{ github.ref_name }}) för ändringar sedan förra versionen.
+
             ## Installation
 
             ### macOS
