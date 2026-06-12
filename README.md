@@ -40,11 +40,15 @@ Built with [Tauri 2](https://tauri.app) (Rust + web frontend). Available for **m
 
 ### macOS
 
-1. Download the `.dmg` file and `Installera macOS.command` from [Releases](../../releases/latest)
+1. Download the `.dmg` from [Releases](../../releases/latest)
 2. Open the `.dmg` and drag **HamAlert DX Receiver** to **Applications**
-3. Double-click **`Installera macOS.command`** — it removes Gatekeeper's quarantine flag and launches the app
+3. Open **Terminal** and run:
 
-> **Note:** The app is not notarized by Apple. The helper script runs `xattr -cr` to bypass Gatekeeper. This is safe for open-source software you build yourself.
+```bash
+xattr -cr "/Applications/HamAlert DX Receiver.app" && open "/Applications/HamAlert DX Receiver.app"
+```
+
+> **Note:** macOS blocks non-notarized apps with a "damaged" dialog — the Terminal command above is the only way past it. This is safe for open-source software you build yourself.
 
 ### Windows
 

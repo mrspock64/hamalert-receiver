@@ -105,9 +105,13 @@ jobs:
             ## Installation
 
             ### macOS
-            1. Ladda ner `.dmg`-filen och `Installera macOS.command`
-            2. Öppna `.dmg` och dra appen till **Program**
-            3. Dubbelklicka på `Installera macOS.command` – den tar bort Gatekeepers spärr och startar appen
+            1. Ladda ner `.dmg`-filen
+            2. Öppna `.dmg` och dra appen till **Program** (`/Applications`)
+            3. Öppna **Terminal** och klistra in följande kommando för att ta bort Gatekeepers spärr:
+            ```
+            xattr -cr "/Applications/HamAlert DX Receiver.app" && open "/Applications/HamAlert DX Receiver.app"
+            ```
+            > macOS blockerar ej notariserade appar med en "skadat"-dialog — kommandot ovan är den enda vägen förbi det.
 
             ### Windows
             Ladda ner `.msi` och kör installeraren.
